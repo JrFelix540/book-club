@@ -1,6 +1,5 @@
-import { Entity, OneToOne, PrimaryKey, Property} from "@mikro-orm/core";
+import { Entity, PrimaryKey, Property} from "@mikro-orm/core";
 import { Field, ObjectType } from "type-graphql";
-import { Review } from "./Review";
 
 @ObjectType()
 @Entity()
