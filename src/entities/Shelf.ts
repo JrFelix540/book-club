@@ -22,11 +22,11 @@ export class Shelf {
     books? = new Collection<Book>(this)
 
     @Field(() => String)
-    @Property()
+    @Property({type: "date"})
     createdAt = new Date();
 
     @Field(() => String)
-    @Property({ onUpdate: () => new Date() })
+    @Property({ onUpdate: () => new Date(), type: "date" })
     updatedAt = new Date();
 
 

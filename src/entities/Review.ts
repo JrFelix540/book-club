@@ -15,7 +15,7 @@ export class Review {
     name!: string
 
     @Field(() => User)
-    @OneToOne(() => User, user => user.review)
+    @OneToOne(() => User)
     user!: User
 
     @Field()
@@ -27,11 +27,11 @@ export class Review {
     book!: Book
 
     @Field(() => String)
-    @Property()
+    @Property({type: "date"})
     createdAt = new Date();
 
     @Field(() => String)
-    @Property({ onUpdate: () => new Date() })
+    @Property({ onUpdate: () => new Date(), type: "date" })
     updatedAt = new Date();
 
   

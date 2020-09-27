@@ -21,16 +21,14 @@ export class User {
     email!: string
 
     @Field(() => String)
-    @Property()
+    @Property({type: "date"})
     createdAt = new Date();
 
     @Field(() => String)
-    @Property({ onUpdate: () => new Date() })
+    @Property({ onUpdate: () => new Date(), type: "date" })
     updatedAt = new Date();
 
-    @Field(() => Review)
-    @OneToOne(() => Review)
-    review?: Review
+   
 
     
 
