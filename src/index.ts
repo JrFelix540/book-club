@@ -8,7 +8,8 @@ import { UserResolver } from './resolvers/user'
 import Redis from 'ioredis'
 import session from 'express-session'
 import connectRedis from 'connect-redis'
-
+import cors from 'cors'
+import  constants  from './constants'
 
 const main = async () => {
     const orm = await MikroORM.init(mikroOrmConfig)
@@ -18,9 +19,11 @@ const main = async () => {
     const redis = new Redis()
     const RedisStore = connectRedis(session)
 
+    
+
     app.use(
         session({
-            name: 'qid',
+            name: constants.USERID_COOKIE,
             store: new RedisStore({
                 client: redis,
                 disableTouch: true
@@ -33,6 +36,13 @@ const main = async () => {
             saveUninitialized: false,
             secret: 'route540',
             resave: false,
+        })
+    )
+
+    app.use(
+        cors({
+            origin: "http://localhost:3000",
+            credentials: true
         })
     )
 
