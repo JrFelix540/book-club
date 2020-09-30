@@ -1,5 +1,3 @@
-import { Book } from "src/entities/Book";
-import { Post } from "src/entities/Post";
 import { User } from "../entities/User";
 import { MyContext } from "src/types";
 import { Arg, Ctx, Field, Int, Mutation, ObjectType, Query, Resolver } from "type-graphql";
