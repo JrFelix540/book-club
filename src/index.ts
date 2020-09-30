@@ -21,6 +21,8 @@ import { Review } from './entities/Review'
 import { Shelf } from './entities/Shelf'
 import { Upvote } from './entities/Upvote'
 import { UserComment } from './entities/UserComment'
+import { PostResolver } from './resolvers/post'
+import { UserCommentResolver } from './resolvers/comment'
 
 const main = async () => {
     const conn = await createConnection({
@@ -70,7 +72,7 @@ const main = async () => {
 
     const apolloServer = new ApolloServer({
         schema: await buildSchema({
-            resolvers: [UserResolver, CommunityResolver],
+            resolvers: [UserResolver, CommunityResolver, PostResolver, UserCommentResolver],
             validate: false
         }),
         context: ({req, res}) => ({
