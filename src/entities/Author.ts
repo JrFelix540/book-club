@@ -1,40 +1,38 @@
-import { Collection, Entity, ManyToMany, PrimaryKey, Property} from "@mikro-orm/core";
+import {Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToMany, JoinTable, BaseEntity} from "typeorm";
 import { Field, ObjectType } from "type-graphql";
 import { Book } from "./Book";
 
 @ObjectType()
 @Entity()
-export class Author {
+export class Author extends BaseEntity {
     @Field()
-    @PrimaryKey()
+    @PrimaryGeneratedColumn()
     id!: number;
 
     @Field()
-    @Property()
-    firstName!: string        
+    @Column()
+    firstName!: string;
 
     @Field()
-    @Property()
+    @Column()
     lastName!: string;
 
-    @Field(()=> [Book])
-    @ManyToMany(() => Book, (book) => book.authors)
-    books? = new Collection<Book>(this)
+    @Field(() => [Book])
+    @ManyToMany(() => Book, book => book.authors )
+    @JoinTable()
+    books: Book[]
 
     @Field(() => String)
-    @Property({type: "date"})
-    createdAt = new Date();
+    @CreateDateColumn()
+    createdAt: Date
 
-    @Field(() => String)
-    @Property({ onUpdate: () => new Date(), type: "date" })
-    updatedAt = new Date();
-
-    
+    @UpdateDateColumn()
+    updatedAt: Date
 
 
 
-  
 
-  
+
 
 }
+

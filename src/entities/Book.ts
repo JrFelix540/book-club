@@ -1,45 +1,56 @@
-import { Entity, PrimaryKey, Property, ManyToOne, ManyToMany, Collection, OneToMany } from "@mikro-orm/core";
+import {Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToMany, ManyToOne, OneToMany, BaseEntity } from "typeorm";
 import { Author } from "./Author";
 import { Genre } from "./Genre"
 import { Shelf } from "./Shelf";
 import {Review} from './Review'
 import { Field, ObjectType } from "type-graphql";
+import { Community } from "./Community";
+
 
 @ObjectType()
 @Entity()
-export class Book {
+export class Book  extends BaseEntity{
     @Field()
-    @PrimaryKey()
+    @PrimaryGeneratedColumn()
     id!: number;
 
     @Field()
-    @Property()
+    @Column()
     title!: string;
 
     @Field(() => [Author])
-    @ManyToMany(() => Author, (author) => author.books, { owner: true }) 
-    authors = new Collection<Author>(this);
+    @ManyToMany(() => Author, author => author.books)
+    authors!: Author[]
 
-    @Field(() => [Genre])
-    @ManyToMany(() => Genre, (genre) => genre.books, { owner: true } ) 
-    genres? = new Collection<Genre>(this);
+    @Field(() => [Book])
+    @ManyToMany(() => Genre, genre => genre.books)
+    genres: Genre[]
 
     @Field(() => Shelf)
-    @ManyToOne()
-    shelf?: Shelf
+    @ManyToOne(() => Shelf, shelf => shelf.books)
+    shelf: Shelf
 
     @Field(() => [Review])
     @OneToMany(() => Review, review => review.book)
-    reviews? = new Collection<Review>(this)
+    reviews: Review[]
+
+    @Field(() => [Community])
+    @ManyToMany(() => Community, community => community.favoriteBooks)
+    favoritedCommunities: Community[]
 
     @Field(() => String)
-    @Property({type: "date"})
-    createdAt = new Date();
+    @CreateDateColumn()
+    createdAt: Date
 
     @Field(() => String)
-    @Property({ onUpdate: () => new Date(), type: "date" })
-    updatedAt = new Date();
-
-  
+    @UpdateDateColumn()
+    updatedAt: Date
 
 }
+
+
+
+
+
+
+

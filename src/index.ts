@@ -1,8 +1,6 @@
 import 'reflect-metadata'
 import express from 'express'
 import { ApolloServer } from 'apollo-server-express'
-import { MikroORM } from '@mikro-orm/core'
-import mikroOrmConfig from './mikro-orm.config'
 import { buildSchema } from 'type-graphql'
 import { UserResolver } from './resolvers/user'
 import Redis from 'ioredis'
@@ -10,9 +8,32 @@ import session from 'express-session'
 import connectRedis from 'connect-redis'
 import cors from 'cors'
 import  constants  from './constants'
+import { CommunityResolver } from './resolvers/community'
+import { createConnection } from 'typeorm'  
+import path from 'path'
+import { Post } from './entities/Post'
+import { User } from './entities/User'
+import { Author } from './entities/Author'
+import { Book } from './entities/Book'
+import { Community } from './entities/Community'
+import { Genre } from './entities/Genre'
+import { Review } from './entities/Review'
+import { Shelf } from './entities/Shelf'
+import { Upvote } from './entities/Upvote'
+import { UserComment } from './entities/UserComment'
 
 const main = async () => {
-    const orm = await MikroORM.init(mikroOrmConfig)
+    const conn = await createConnection({
+        type: 'postgres',
+        database: 'bookclub2',
+        username: 'saleor',
+        password: 'saleor',
+        logging: true,
+        synchronize: true,
+        migrations: [path.join(__dirname, './migrations/*', )],
+        entities: [Author, Book,Community, Genre,Review, Shelf, Upvote, UserComment, User, Post]
+    })
+
 
     const app = express()
 
@@ -49,14 +70,13 @@ const main = async () => {
 
     const apolloServer = new ApolloServer({
         schema: await buildSchema({
-            resolvers: [UserResolver],
+            resolvers: [UserResolver, CommunityResolver],
             validate: false
         }),
         context: ({req, res}) => ({
             req,
             res,
             redis,
-            em: orm.em
         })
 
     })

@@ -58,17 +58,17 @@ export class UserResolver {
 
     @Query(() => [User])
     async users(
-        @Ctx() {em}: MyContext
+    
     ): Promise<User[]>{
         
-        const users = await em.find(User, {})
+        const users = await User.find({})
         return users
         
     }
 
     @Mutation(() => UserResponse)
     async register(
-        @Ctx() {em, req}: MyContext,
+        @Ctx() {req}: MyContext,
         @Arg('userInput') userInput: UserRegisterInput
     ): Promise<UserResponse>{
 
@@ -81,23 +81,16 @@ export class UserResolver {
 
 
         const hashedPassword = await argon2.hash(userInput.password)
-        const user = await em.create(User, {
+        const user = User.create({
             username: userInput.username,
             email: userInput.email,
             password: hashedPassword
-            
         })
         
-        const newEm = em.fork(false);
-        await newEm.begin()
-
-        try{
-            newEm.persist(user)
-            await newEm.commit()
-
+        try{    
+            await User.save(user)
         }catch(err){
-            await newEm.rollback()
-            if(err.detail.includes('already exists') && err.constraint === 'user_username_unique'){
+            if(err.detail.includes('already exists') && err.constraint === 'UQ_78a916df40e02a9deb1c4b75edb'){
                 return {
                     errors: [{
                         field: "username",
@@ -106,7 +99,7 @@ export class UserResolver {
                 }
             }
 
-            if(err.detail.includes('already exists') && err.constraint === 'user_email_unique'){
+            if(err.detail.includes('already exists') && err.constraint === 'UQ_e12875dfb3b1d92d7d7c5377e22'){
                 return {
                     errors: [{
                         field: "email",
@@ -128,14 +121,15 @@ export class UserResolver {
 
     @Mutation(() => UserResponse)
     async login(
-        @Ctx() {em, req}: MyContext,
+        @Ctx() { req}: MyContext,
         @Arg('userInput') userInput: UserLoginInput
     ): Promise<UserResponse>
     {
-        const searchBy = userInput.usernameOrEmail.includes("@") ? 'email' : 'username' 
-        const user = searchBy === "email" ?
-            await em.findOne(User, {email: userInput.usernameOrEmail}) :
-            await em.findOne(User, {username: userInput.usernameOrEmail})
+        const user = await User.findOne(
+            userInput.usernameOrEmail.includes("@") ?
+            {where: {email: userInput.usernameOrEmail }} :
+            {where: {username: userInput.usernameOrEmail }}
+        )
 
 
         if(!user){
@@ -193,10 +187,10 @@ export class UserResolver {
     @Mutation(() => Boolean)
     async forgotPassword(
         @Arg('email') email: string,
-        @Ctx() {redis, em}: MyContext
+        @Ctx() {redis}: MyContext
     ){
 
-        const user = await em.findOne(User, {email})
+        const user = await User.findOne({where: {email}})
 
         if(!user){
             return true
@@ -220,7 +214,7 @@ export class UserResolver {
     async resetPassword(
         @Arg('token') token: string,
         @Arg('password') password: string,
-        @Ctx() {em, redis}: MyContext
+        @Ctx() { redis}: MyContext
     ): Promise<UserResponse>{
         const key = constants.FORGOT_PASSWORD + token
         const userId = await redis.get(key)
@@ -242,7 +236,7 @@ export class UserResolver {
             }
         }
 
-        const user = await em.findOne(User, {id: parseInt(userId)})
+        const user = await User.findOne( parseInt(userId))
         if(!user){
             return{
                 errors: [{
@@ -254,7 +248,7 @@ export class UserResolver {
 
         const hashedPassword = await argon2.hash(password)
         user.password = hashedPassword
-        await em.persistAndFlush(user)
+        user.save()
 
         await redis.del(key)
         return{
@@ -265,13 +259,22 @@ export class UserResolver {
 
     @Query(() => User, { nullable: true })
     async me(
-        @Ctx() {em, req}: MyContext
-    ): Promise <User | null> {
-        const user = await em.findOne(User, {id: req.session.userId })
-        if (!user){
+        @Ctx() {req}: MyContext
+    ): Promise <User | null | undefined> {
+        console.log(req.session.userId)
+        if(!req.session.userId){
             return null
         }
 
+        const user = await User.findOne(req.session.userId)
         return user
+    }
+        
+
+    @Mutation(() => Boolean)
+    async deleteUsers(): Promise<boolean>{
+
+        await User.delete({})
+        return true
     }
 }

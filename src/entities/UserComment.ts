@@ -1,30 +1,27 @@
-import { Field, ObjectType } from "type-graphql";
-import { Book } from "./Book";
+import { ObjectType, Field } from "type-graphql";
+import { Post } from "./Post";
 import { User } from "./User";
+
 import { BaseEntity, Entity, PrimaryGeneratedColumn, Column, ManyToOne, CreateDateColumn, UpdateDateColumn} from "typeorm";
 
 @ObjectType()
 @Entity()
-export class Review extends BaseEntity{
+export class UserComment extends BaseEntity {
     @Field()
     @PrimaryGeneratedColumn()
     id!: number;
 
     @Field()
     @Column()
-    content: string;
-
-    @Field()
-    @Column()
-    value!: number;
+    content!: string;
 
     @Field(() => User)
-    @ManyToOne(() => User, user => user.reviews)
+    @ManyToOne(() => User, user => user.comments)
     creator!: User
 
-    @Field(() => Book)
-    @ManyToOne(() => Book, book => book.reviews)
-    book!: Book
+    @Field(() => Post)
+    @ManyToOne(() => Post, post => post.comments)
+    post!: Post
 
     @Field(() => String)
     @CreateDateColumn()
@@ -33,7 +30,5 @@ export class Review extends BaseEntity{
     @Field(() => String)
     @UpdateDateColumn()
     updatedAt: Date
-    
-
 }
 
