@@ -14,7 +14,7 @@ export class Shelf extends BaseEntity{
     type!: string;
 
     @Field(() => [Book])
-    @OneToMany(() => Book, book => book.shelf)
+    @OneToMany(() => Book, book => book.shelf, { onDelete: "SET NULL"})
     books: Book[] 
 
     @Field(() => String)

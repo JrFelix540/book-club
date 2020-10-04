@@ -19,23 +19,23 @@ export class Book  extends BaseEntity{
     title!: string;
 
     @Field(() => [Author])
-    @ManyToMany(() => Author, author => author.books)
+    @ManyToMany(() => Author, author => author.books,{ onDelete: 'SET NULL'})
     authors!: Author[]
 
     @Field(() => [Book])
-    @ManyToMany(() => Genre, genre => genre.books)
+    @ManyToMany(() => Genre, genre => genre.books, { onDelete: 'SET NULL' })
     genres: Genre[]
 
     @Field(() => Shelf)
-    @ManyToOne(() => Shelf, shelf => shelf.books)
+    @ManyToOne(() => Shelf, shelf => shelf.books, { onDelete: 'SET NULL' })
     shelf: Shelf
 
     @Field(() => [Review])
-    @OneToMany(() => Review, review => review.book)
+    @OneToMany(() => Review, review => review.book, { onDelete: 'CASCADE'})
     reviews: Review[]
 
     @Field(() => [Community])
-    @ManyToMany(() => Community, community => community.favoriteBooks)
+    @ManyToMany(() => Community, community => community.favoriteBooks, { onDelete: 'SET NULL'})
     favoritedCommunities: Community[]
 
     @Field(() => String)

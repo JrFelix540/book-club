@@ -27,27 +27,27 @@ export class User extends BaseEntity {
     password: string
 
     @Field(() => [Community])
-    @OneToMany(() => Community, community => community.creator)
+    @OneToMany(() => Community, community => community.creator, { onDelete: "SET NULL"})
     createdCommunities: Community[]
 
     @Field(() => [Community])
-    @ManyToMany(() => Community, community => community.members )
+    @ManyToMany(() => Community, community => community.members, {onDelete: "SET NULL"} )
     memberCommunities: Community []
 
     @Field(() => [Review])
-    @OneToMany(() => Review, review => review.creator)
+    @OneToMany(() => Review, review => review.creator, { onDelete: "CASCADE"})
     reviews: Review[]
 
     @Field(() => [Upvote])
-    @OneToMany(() => Upvote, upvote => upvote.creator)
+    @OneToMany(() => Upvote, upvote => upvote.creator, { onDelete: "CASCADE"})
     upvotes: Upvote[]
 
     @Field(() => [UserComment])
-    @OneToMany(() => UserComment, userComment => userComment.creator)
+    @OneToMany(() => UserComment, userComment => userComment.creator, { onDelete: "CASCADE"})
     comments: UserComment[]
 
     @Field(() => [Post])
-    @OneToMany(() => Post, post => post.creator)
+    @OneToMany(() => Post, post => post.creator, { onDelete: "CASCADE"})
     posts: Post[]
 
     @Field(() => String)

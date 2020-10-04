@@ -18,7 +18,7 @@ export class Author extends BaseEntity {
     lastName!: string;
 
     @Field(() => [Book])
-    @ManyToMany(() => Book, book => book.authors )
+    @ManyToMany(() => Book, book => book.authors, { onDelete: "SET NULL"} )
     @JoinTable()
     books: Book[]
 

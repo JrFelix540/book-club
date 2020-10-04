@@ -18,7 +18,7 @@ export class Genre extends BaseEntity{
     text: string;
 
     @Field(() => [Book])
-    @ManyToMany(() => Book, book => book.genres)
+    @ManyToMany(() => Book, book => book.genres, { onDelete: 'SET NULL'})
     @JoinTable()
     books: Book[];
 

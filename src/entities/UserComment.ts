@@ -16,11 +16,11 @@ export class UserComment extends BaseEntity {
     content!: string;
 
     @Field(() => User)
-    @ManyToOne(() => User, user => user.comments)
+    @ManyToOne(() => User, user => user.comments, { onDelete: "SET NULL" })
     creator!: User
 
     @Field(() => Post)
-    @ManyToOne(() => Post, post => post.comments)
+    @ManyToOne(() => Post, post => post.comments, { onDelete: "SET NULL"})
     post!: Post
 
     @Field(() => String)

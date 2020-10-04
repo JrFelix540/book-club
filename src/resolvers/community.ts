@@ -1,12 +1,12 @@
 import { User } from "../entities/User";
 import { MyContext } from "src/types";
-import { Arg, Ctx, Field, Int, Mutation, ObjectType, Query, Resolver } from "type-graphql";
+import { Arg, Ctx, Field, FieldResolver, Float, Int, Mutation, ObjectType, Query, Resolver, Root } from "type-graphql";
 import { Community } from '../entities/Community'
 import { FieldError } from "./user"
 import { getConnection, Repository } from 'typeorm'
 
 
-const allRelations: string[] = ["creator", "posts", "members", "favoriteBooks"]
+const allRelations: string[] = ["posts", "favoriteBooks"]
 
 
 @ObjectType()
@@ -26,8 +26,26 @@ export class BooleanFieldResponse {
     ok?: boolean
 }
 
-@Resolver()
+@Resolver(Community)
 export class CommunityResolver{
+    // Dataclasses
+    @FieldResolver(() => User)
+    creator(
+        @Root() community: Community,
+        @Ctx() { userLoader }: MyContext
+    ){
+        return userLoader.load(community.creatorId)
+    }
+
+    @FieldResolver(() => [User])
+    members( 
+        @Root() community: Community, 
+        @Ctx() { userLoader }: MyContext 
+    ){
+        return userLoader.loadMany(community.memberIds)
+    }
+
+
     @Query(() => [Community])
     async allCommunities (
     ){
@@ -45,12 +63,11 @@ export class CommunityResolver{
 
         const connection = getConnection()
         const communityRepository: Repository<Community> = connection.getRepository(Community)
-        const community = await communityRepository.find({
+        const community = await communityRepository.findOne({
             where: {id},
             relations: allRelations
         })
-
-        return community[0]
+        return community
 
 
         
@@ -60,7 +77,8 @@ export class CommunityResolver{
     @Mutation(() => CommunityResponse)
     async createCommunity(
         @Ctx() { req}: MyContext,
-        @Arg('title') title: string 
+        @Arg('name') name: string,
+        @Arg('description') description: string 
     ): Promise<CommunityResponse>{
 
         const user = await User.findOne({where: { id: req.session.userId }} )
@@ -71,9 +89,12 @@ export class CommunityResolver{
         }
 
        const community = new Community()
-       community.name = title
+       community.name = name
        community.creator = user
        community.members = [user]
+       community.description = description
+       community.creatorId = user.id
+       community.memberIds = [user.id]
 
 
        
@@ -103,9 +124,23 @@ export class CommunityResolver{
 
     ): Promise<BooleanFieldResponse> {
         const {userId} = req.session
+        if (!userId){
+            return{
+                errors: [{
+                    field: "user",
+                    message: "User is not authenticated"
+                }]
+            }
+        }
         const user = await User.findOne({where: {id: userId}})
         if(!user){
-            throw Error("The user is not authenticated")
+            return{
+                errors: [{
+                    field: "user",
+                    message: "User has not been found"
+                    
+                }]
+            }
         }
         const community = await Community.findOne( {id}, {relations: ['members']})
         if(!community){

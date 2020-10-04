@@ -23,17 +23,24 @@ import { Upvote } from './entities/Upvote'
 import { UserComment } from './entities/UserComment'
 import { PostResolver } from './resolvers/post'
 import { UserCommentResolver } from './resolvers/comment'
+import { createUserLoader } from './utils/createUserLoader'
+import { createCommunityLoader } from './utils/createCommunityLoader'
+import { createUpvoteLoader } from './utils/createUpvoteLoader'
 
 const main = async () => {
     const conn = await createConnection({
         type: 'postgres',
-        database: 'bookclub2',
+        database: 'bookclub',
         username: 'saleor',
         password: 'saleor',
         logging: true,
         synchronize: true,
-        migrations: [path.join(__dirname, './migrations/*', )],
-        entities: [Author, Book,Community, Genre,Review, Shelf, Upvote, UserComment, User, Post]
+        entities: [Author, Book,Community, Genre,Review, Shelf, Upvote, UserComment, User, Post],
+        migrations: [path.join(__dirname, './migration/*', )],
+        migrationsTableName: "bookclub_migration_table",
+        cli: {
+            migrationsDir: "migration"
+        }
     })
 
 
@@ -70,6 +77,7 @@ const main = async () => {
     )
 
 
+    
     const apolloServer = new ApolloServer({
         schema: await buildSchema({
             resolvers: [UserResolver, CommunityResolver, PostResolver, UserCommentResolver],
@@ -79,6 +87,9 @@ const main = async () => {
             req,
             res,
             redis,
+            userLoader: createUserLoader(),
+            communityLoader: createCommunityLoader(),
+            upvoteLoader: createUpvoteLoader()
         })
 
     })

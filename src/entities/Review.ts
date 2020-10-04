@@ -19,11 +19,11 @@ export class Review extends BaseEntity{
     value!: number;
 
     @Field(() => User)
-    @ManyToOne(() => User, user => user.reviews)
+    @ManyToOne(() => User, user => user.reviews, { onDelete: "SET NULL"})
     creator!: User
 
     @Field(() => Book)
-    @ManyToOne(() => Book, book => book.reviews)
+    @ManyToOne(() => Book, book => book.reviews, { onDelete: "SET NULL"})
     book!: Book
 
     @Field(() => String)

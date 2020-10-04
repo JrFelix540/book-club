@@ -1,26 +1,30 @@
-import { Field, ObjectType } from "type-graphql";
+import { Field, Int, ObjectType } from "type-graphql";
 import { Post } from "./Post";
 import { User } from "./User";
-import { BaseEntity, Entity, PrimaryGeneratedColumn, Column, ManyToOne} from "typeorm";
+import { BaseEntity, Entity, Column, ManyToOne, PrimaryColumn} from "typeorm";
 
 @ObjectType()
 @Entity()
 export class Upvote extends BaseEntity{
-    @Field()
-    @PrimaryGeneratedColumn()
-    id: number;
-
-    @Field()
+    @Field(() => Int)
     @Column()
     value: number;
 
     @Field(() => Post)
-    @ManyToOne(() => Post, post => post.upvotes)
+    @ManyToOne(() => Post, post => post.upvotes, { onDelete: "SET NULL"})
     post: Post
 
     @Field(() => User)
-    @ManyToOne(() => User, user => user.upvotes)
+    @ManyToOne(() => User, user => user.upvotes, { onDelete: "SET NULL"})
     creator: User
+
+    @Field(() => Int)
+    @PrimaryColumn()
+    creatorId: number
+
+    @Field(() => Int)
+    @PrimaryColumn()
+    postId: number
 
 }
 

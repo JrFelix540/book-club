@@ -65,4 +65,10 @@ export class UserCommentResolver{
         }
 
     }
+
+    @Mutation(() => Boolean)
+    async deleteAllComments(): Promise<Boolean>{
+        await UserComment.delete({})
+        return true
+    }
 }
