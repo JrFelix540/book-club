@@ -42,3 +42,6 @@ src/migrations/*
 
 # ignore yarn.lock
 yarn.lock
+
+#ignore prettier
+.prettierrc

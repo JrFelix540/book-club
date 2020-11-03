@@ -13,4 +13,5 @@ export const createCommunityLoader = () => new DataLoader<number, Community>(
 
         return communityIds.map(communityId => communityIdToCommunity[communityId])
     }
+    
 )
