@@ -1,4 +1,3 @@
-import { Post } from "../entities/Post";
 import { MyContext } from "src/types";
 import {
   Arg,
@@ -13,9 +12,7 @@ import {
   Root,
 } from "type-graphql";
 import { FieldError } from "./user";
-import { Community } from "../entities/Community";
-import { User } from "../entities/User";
-import { Upvote } from "../entities/Upvote";
+import { Upvote, User, Community, Post } from "../entities";
 import { getConnection, Repository } from "typeorm";
 
 const allRelations = ["community", "comments", "upvotes"];
@@ -44,6 +41,15 @@ export class PostResolver {
     return post.content.slice(0, 50);
   }
 
+  @FieldResolver(() => Boolean)
+  isOwner(@Root() post: Post, @Ctx() { req }: MyContext) {
+    if (req.session.userId === post.creatorId) {
+      return true;
+    } else {
+      return false;
+    }
+  }
+
   @FieldResolver(() => User)
   creator(@Root() post: Post, @Ctx() { userLoader }: MyContext) {
     return userLoader.load(post.creatorId);
@@ -66,7 +72,7 @@ export class PostResolver {
     const userId = req.session.userId;
 
     const found = community.memberIds.find(
-      (commId) => commId === userId,
+      (commId: number) => commId === userId,
     );
 
     if (found) {
@@ -308,7 +314,7 @@ export class PostResolver {
         ],
       };
     }
-    if (post?.creator.id !== req.session.userId) {
+    if (post?.creatorId !== req.session.userId) {
       return {
         errors: [
           {

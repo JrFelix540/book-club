@@ -1,4 +1,3 @@
-import { User } from "../entities/User";
 import { MyContext } from "src/types";
 import {
   Arg,
@@ -12,9 +11,9 @@ import {
   Resolver,
   Root,
 } from "type-graphql";
-import { Community } from "../entities/Community";
 import { FieldError } from "./user";
 import { getConnection, Repository } from "typeorm";
+import { User, Community } from "../entities";
 
 const allRelations: string[] = ["posts", "favoriteBooks"];
 
@@ -52,6 +51,32 @@ export class CommunityResolver {
     @Ctx() { userLoader }: MyContext,
   ) {
     return userLoader.loadMany(community.memberIds);
+  }
+
+  @FieldResolver(() => Boolean)
+  hasJoined(@Root() community: Community, @Ctx() { req }: MyContext) {
+    const userId = req.session.userId;
+
+    const found = community.memberIds.find(
+      (commId) => commId === userId,
+    );
+
+    if (found) {
+      return true;
+    } else {
+      return false;
+    }
+  }
+
+  @FieldResolver(() => String)
+  dateCreated(@Root() community: Community) {
+    const dateString = String(community.createdAt);
+    const date = new Date(dateString);
+    const month = date.toLocaleString(`default`, { month: "long" });
+    const day = date.getDate();
+    const year = date.getFullYear();
+
+    return `${month} ${day}, ${year}`;
   }
 
   @Query(() => [Community])

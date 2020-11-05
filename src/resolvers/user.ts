@@ -1,4 +1,3 @@
-import { User } from "../entities/User";
 import { MyContext } from "src/types";
 import constants from "../constants";
 import {
@@ -16,6 +15,7 @@ import { validateUserRegisterInput } from "../utils/validateUserInput";
 import { v4 } from "uuid";
 import { sendMail } from "../utils/sendMail";
 import { getConnection, Repository } from "typeorm";
+import { User } from "../entities";
 
 @ObjectType()
 export class FieldError {

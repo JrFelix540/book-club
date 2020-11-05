@@ -11,16 +11,18 @@ import constants from "./constants";
 import { CommunityResolver } from "./resolvers/community";
 import { createConnection } from "typeorm";
 import path from "path";
-import { Post } from "./entities/Post";
-import { User } from "./entities/User";
-import { Author } from "./entities/Author";
-import { Book } from "./entities/Book";
-import { Community } from "./entities/Community";
-import { Genre } from "./entities/Genre";
-import { Review } from "./entities/Review";
-import { Shelf } from "./entities/Shelf";
-import { Upvote } from "./entities/Upvote";
-import { UserComment } from "./entities/UserComment";
+import {
+  Post,
+  User,
+  Author,
+  Book,
+  Community,
+  Genre,
+  Review,
+  Shelf,
+  Upvote,
+  UserComment,
+} from "./entities";
 import { PostResolver } from "./resolvers/post";
 import { UserCommentResolver } from "./resolvers/comment";
 import { createUserLoader } from "./utils/createUserLoader";

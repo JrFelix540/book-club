@@ -1,34 +1,56 @@
-import { ObjectType, Field } from "type-graphql";
-import { Post } from "./Post";
-import { User } from "./User";
-
-import { BaseEntity, Entity, PrimaryGeneratedColumn, Column, ManyToOne, CreateDateColumn, UpdateDateColumn} from "typeorm";
+import { ObjectType, Field, Int } from "type-graphql";
+import { Post, User } from "./";
+import {
+  BaseEntity,
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  ManyToOne,
+  CreateDateColumn,
+  UpdateDateColumn,
+  OneToMany,
+} from "typeorm";
 
 @ObjectType()
 @Entity()
-export class UserComment extends BaseEntity {
-    @Field()
-    @PrimaryGeneratedColumn()
-    id!: number;
+export default class UserComment extends BaseEntity {
+  @Field()
+  @PrimaryGeneratedColumn()
+  id!: number;
 
-    @Field()
-    @Column()
-    content!: string;
+  @Field()
+  @Column()
+  content!: string;
 
-    @Field(() => User)
-    @ManyToOne(() => User, user => user.comments, { onDelete: "SET NULL" })
-    creator!: User
+  @Field(() => User)
+  @ManyToOne(() => User, (user) => user.comments, {
+    onDelete: "CASCADE",
+  })
+  creator!: User;
 
-    @Field(() => Post)
-    @ManyToOne(() => Post, post => post.comments, { onDelete: "SET NULL"})
-    post!: Post
+  @Field(() => Post)
+  @ManyToOne(() => Post, (post) => post.comments, {
+    onDelete: "CASCADE",
+  })
+  post!: Post;
 
-    @Field(() => String)
-    @CreateDateColumn()
-    createdAt: Date
+  @Field(() => [Int])
+  @Column("int", { array: true, nullable: true })
+  commentIds: number[];
 
-    @Field(() => String)
-    @UpdateDateColumn()
-    updatedAt: Date
+  @Field()
+  @Column({ default: 0 })
+  points!: number;
+
+  @Field(() => Int)
+  @Column({ nullable: true })
+  parentCommentId: number;
+
+  @Field(() => String)
+  @CreateDateColumn()
+  createdAt: Date;
+
+  @Field(() => String)
+  @UpdateDateColumn()
+  updatedAt: Date;
 }
-

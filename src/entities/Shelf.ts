@@ -1,32 +1,37 @@
 import { Field, ObjectType } from "type-graphql";
-import { Book } from "./Book";
-import { BaseEntity, Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, OneToMany} from "typeorm";
+import { Book } from "./";
+import {
+  BaseEntity,
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+  UpdateDateColumn,
+  OneToMany,
+} from "typeorm";
 
 @ObjectType()
 @Entity()
-export class Shelf extends BaseEntity{
-    @Field()
-    @PrimaryGeneratedColumn()
-    id!: number;
+export default class Shelf extends BaseEntity {
+  @Field()
+  @PrimaryGeneratedColumn()
+  id!: number;
 
-    @Field()
-    @Column({unique: true})
-    type!: string;
+  @Field()
+  @Column({ unique: true })
+  type!: string;
 
-    @Field(() => [Book])
-    @OneToMany(() => Book, book => book.shelf, { onDelete: "SET NULL"})
-    books: Book[] 
+  @Field(() => [Book])
+  @OneToMany(() => Book, (book) => book.shelf, {
+    onDelete: "SET NULL",
+  })
+  books: Book[];
 
-    @Field(() => String)
-    @CreateDateColumn()
-    createdAt: Date
+  @Field(() => String)
+  @CreateDateColumn()
+  createdAt: Date;
 
-    @Field(() => String)
-    @UpdateDateColumn()
-    updatedAt: Date
-   
-
+  @Field(() => String)
+  @UpdateDateColumn()
+  updatedAt: Date;
 }
-
-
-
