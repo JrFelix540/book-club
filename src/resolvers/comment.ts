@@ -21,7 +21,7 @@ export class UserCommentResponse {
 }
 
 @Resolver()
-export class UserCommentResolver {
+export default class UserCommentResolver {
   @Mutation(() => UserCommentResponse)
   async createComment(
     @Arg("content") content: string,

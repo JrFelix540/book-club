@@ -35,7 +35,7 @@ export class UpvoteResponse {
 }
 
 @Resolver(Post)
-export class PostResolver {
+export default class PostResolver {
   @FieldResolver(() => String)
   contentSnippet(@Root() post: Post) {
     return post.content.slice(0, 50);

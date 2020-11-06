@@ -1,5 +1,5 @@
 import { ObjectType, Field, Int } from "type-graphql";
-import { Post, User } from "./";
+import { CommentUpvote, Post, User } from "./";
 import {
   BaseEntity,
   Entity,
@@ -30,6 +30,7 @@ export default class UserComment extends BaseEntity {
 
   @Field(() => Post)
   @ManyToOne(() => Post, (post) => post.comments, {
+    nullable: true,
     onDelete: "CASCADE",
   })
   post!: Post;
@@ -45,6 +46,14 @@ export default class UserComment extends BaseEntity {
   @Field(() => Int)
   @Column({ nullable: true })
   parentCommentId: number;
+
+  @Field(() => CommentUpvote)
+  @OneToMany(
+    () => CommentUpvote,
+    (commentUpvote) => commentUpvote.comment,
+    { onDelete: "CASCADE" },
+  )
+  commentUpvotes: CommentUpvote[];
 
   @Field(() => String)
   @CreateDateColumn()

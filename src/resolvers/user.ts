@@ -56,7 +56,7 @@ class UserResponse {
 }
 
 @Resolver()
-export class UserResolver {
+export default class UserResolver {
   @Query(() => String)
   hello() {
     return `Hello, its me`;

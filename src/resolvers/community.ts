@@ -35,7 +35,7 @@ export class BooleanFieldResponse {
 }
 
 @Resolver(Community)
-export class CommunityResolver {
+export default class CommunityResolver {
   // Dataclasses
   @FieldResolver(() => User)
   creator(

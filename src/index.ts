@@ -2,13 +2,11 @@ import "reflect-metadata";
 import express from "express";
 import { ApolloServer } from "apollo-server-express";
 import { buildSchema } from "type-graphql";
-import { UserResolver } from "./resolvers/user";
 import Redis from "ioredis";
 import session from "express-session";
 import connectRedis from "connect-redis";
 import cors from "cors";
 import constants from "./constants";
-import { CommunityResolver } from "./resolvers/community";
 import { createConnection } from "typeorm";
 import path from "path";
 import {
@@ -22,9 +20,14 @@ import {
   Shelf,
   Upvote,
   UserComment,
+  CommentUpvote,
 } from "./entities";
-import { PostResolver } from "./resolvers/post";
-import { UserCommentResolver } from "./resolvers/comment";
+import {
+  UserResolver,
+  PostResolver,
+  UserCommentResolver,
+  CommunityResolver,
+} from "./resolvers";
 import { createUserLoader } from "./utils/createUserLoader";
 import { createCommunityLoader } from "./utils/createCommunityLoader";
 import { createUpvoteLoader } from "./utils/createUpvoteLoader";
@@ -48,6 +51,7 @@ const main = async () => {
       UserComment,
       User,
       Post,
+      CommentUpvote,
     ],
     migrations: [path.join(__dirname, "./migration/*")],
     migrationsTableName: "bookclub_migration_table",
