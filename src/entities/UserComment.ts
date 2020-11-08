@@ -33,7 +33,7 @@ export default class UserComment extends BaseEntity {
     nullable: true,
     onDelete: "CASCADE",
   })
-  post!: Post;
+  post: Post;
 
   @Field(() => [Int])
   @Column("int", { array: true, nullable: true })

@@ -27,11 +27,10 @@ export default class CommentUpvote extends BaseEntity {
   @ManyToOne(() => User, { onDelete: "CASCADE", nullable: true })
   creator: User;
 
-  @Field()
-  @PrimaryColumn()
-  creatorId: number;
-
-  @Field()
+  @Field(() => Int)
   @PrimaryColumn()
   commentId: number;
+  @Field(() => Int)
+  @PrimaryColumn()
+  creatorId: number;
 }
