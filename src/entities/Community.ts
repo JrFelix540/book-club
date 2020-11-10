@@ -1,4 +1,4 @@
-import { Field, Int, ObjectType } from "type-graphql";
+import { Field, Int, ObjectType, Float } from "type-graphql";
 import { Book, Post, User } from "./";
 import {
   BaseEntity,
@@ -51,7 +51,7 @@ export default class Community extends BaseEntity {
   @JoinTable()
   members: User[];
 
-  @Field(() => [Int])
+  @Field(() => [Float])
   @Column("int", { array: true, nullable: true })
   memberIds: number[];
 

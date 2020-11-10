@@ -13,7 +13,7 @@ import {
 } from "type-graphql";
 import { FieldError } from "./user";
 import { Upvote, User, Community, Post } from "../entities";
-import { getConnection, Repository } from "typeorm";
+import { getConnection, In, Repository } from "typeorm";
 
 const allRelations = ["community", "comments", "upvotes"];
 
@@ -190,9 +190,52 @@ export default class PostResolver {
     return true;
   }
 
-  @Query(() => [Post])
+  @Query(() => [Post], { nullable: true })
   async posts(): Promise<Post[]> {
     const posts = await Post.find({ relations: allRelations });
+    return posts;
+  }
+
+  @Query(() => [Post], { nullable: true })
+  async myCommunitiesPosts(@Ctx() { req }: MyContext) {
+    const connection = getConnection();
+    const userRepository: Repository<User> = connection.getRepository(
+      User,
+    );
+    const postRepository: Repository<Post> = connection.getRepository(
+      Post,
+    );
+    const user = await userRepository.findOne({
+      where: { id: req.session.userId },
+      relations: ["memberCommunities"],
+    });
+    if (!user) {
+      return null;
+    }
+    const communityIds = user.memberCommunities.map(
+      (comm) => comm.id,
+    );
+
+    const posts = await postRepository.find({
+      where: { communityId: In(communityIds) },
+      relations: ["community", "upvotes"],
+    });
+
+    return posts;
+  }
+
+  @Query(() => [Post], { nullable: true })
+  async communityPosts(
+    @Arg("communityId") communityId: number,
+  ): Promise<Post[]> {
+    const connection = getConnection();
+    const postsRepository: Repository<Post> = connection.getRepository(
+      Post,
+    );
+    const posts = await postsRepository.find({
+      where: { communityId },
+      relations: allRelations,
+    });
     return posts;
   }
 

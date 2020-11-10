@@ -51,7 +51,7 @@ export default class Post extends BaseEntity {
   })
   comments: UserComment[];
 
-  @Field(() => [Upvote])
+  @Field(() => [Upvote], { nullable: true })
   @OneToMany(() => Upvote, (upvote) => upvote.post, {
     onDelete: "CASCADE",
   })

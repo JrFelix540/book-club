@@ -12,8 +12,8 @@ import {
   Root,
 } from "type-graphql";
 import { FieldError } from "./user";
-import { getConnection, Repository } from "typeorm";
-import { User, Community } from "../entities";
+import { getConnection, In, Repository } from "typeorm";
+import { User, Community, Post } from "../entities";
 
 const allRelations: string[] = ["posts", "favoriteBooks"];
 
@@ -99,7 +99,7 @@ export default class CommunityResolver {
     );
     const community = await communityRepository.findOne({
       where: { id },
-      relations: allRelations,
+      relations: ["creator"],
     });
     return community;
   }
