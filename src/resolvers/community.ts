@@ -12,8 +12,9 @@ import {
   Root,
 } from "type-graphql";
 import { FieldError } from "./user";
-import { getConnection, In, Repository } from "typeorm";
-import { User, Community, Post } from "../entities";
+import { getConnection, Repository } from "typeorm";
+import { User, Community } from "../entities";
+import { isUserAuth } from "../utils/isUserAuth";
 
 const allRelations: string[] = ["posts", "favoriteBooks"];
 
@@ -110,13 +111,21 @@ export default class CommunityResolver {
     @Arg("name") name: string,
     @Arg("description") description: string,
   ): Promise<CommunityResponse> {
+    isUserAuth(req.session.userId);
     const user = await User.findOne({
       where: { id: req.session.userId },
     });
 
     const connection = getConnection();
     if (!user) {
-      throw Error(`User is not authenticated`);
+      return {
+        errors: [
+          {
+            field: "User",
+            message: "User is not authenticated",
+          },
+        ],
+      };
     }
 
     const community = new Community();
@@ -154,12 +163,13 @@ export default class CommunityResolver {
     @Ctx() { req }: MyContext,
     @Arg("id", () => Int) id: number,
   ): Promise<BooleanFieldResponse> {
+    isUserAuth(req.session.userId);
     const { userId } = req.session;
     if (!userId) {
       return {
         errors: [
           {
-            field: "user",
+            field: "User",
             message: "User is not authenticated",
           },
         ],
@@ -229,8 +239,67 @@ export default class CommunityResolver {
     };
   }
 
+  @Mutation(() => BooleanFieldResponse)
+  async leaveCommunity(
+    @Ctx() { req }: MyContext,
+    @Arg("communityId") communityId: number,
+  ): Promise<BooleanFieldResponse> {
+    isUserAuth(req.session.userId);
+    const connection = getConnection();
+    const communityRepository: Repository<Community> = connection.getRepository(
+      Community,
+    );
+
+    const user = await User.findOne({ id: req.session.userId });
+    if (!user) {
+      return {
+        errors: [
+          {
+            field: `User`,
+            message: `User is not authenticated`,
+          },
+        ],
+      };
+    }
+
+    const community = await communityRepository.findOne({
+      where: { id: communityId },
+      relations: ["members"],
+    });
+    if (!community) {
+      return {
+        errors: [
+          {
+            field: "communityId",
+            message: "community id error",
+          },
+        ],
+      };
+    }
+
+    const newMembers = community.members.filter(
+      (member) => member.id !== user.id,
+    );
+    const newMemberIds = community.memberIds.filter(
+      (id) => id !== user.id,
+    );
+    community.members = newMembers;
+    community.memberIds = newMemberIds;
+
+    try {
+      await community.save();
+    } catch (err) {
+      console.log(err);
+    }
+
+    return {
+      ok: true,
+    };
+  }
+
   @Mutation(() => Boolean)
-  async deleteAllCommunities() {
+  async deleteAllCommunities(@Ctx() { req }: MyContext) {
+    isUserAuth(req.session.userId);
     await Community.delete({});
 
     return true;

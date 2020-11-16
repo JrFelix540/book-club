@@ -16,6 +16,7 @@ import { v4 } from "uuid";
 import { sendMail } from "../utils/sendMail";
 import { getConnection, Repository } from "typeorm";
 import { User } from "../entities";
+import { isUserAuth } from "../utils/isUserAuth";
 
 @ObjectType()
 export class FieldError {
@@ -171,8 +172,9 @@ export default class UserResolver {
     };
   }
 
-  @Mutation(() => Boolean)
-  logout(@Ctx() { req, res }: MyContext): Promise<boolean> {
+  @Mutation(() => Boolean) logout(
+    @Ctx() { req, res }: MyContext,
+  ): Promise<boolean> {
     return new Promise((resolve) =>
       req.session.destroy((err) => {
         res.clearCookie(constants.USERID_COOKIE);
@@ -273,13 +275,13 @@ export default class UserResolver {
     if (!req.session.userId) {
       return null;
     }
-
     const user = await User.findOne(req.session.userId);
     return user;
   }
 
   @Mutation(() => Boolean)
-  async deleteUsers(): Promise<boolean> {
+  async deleteUsers(@Ctx() { req }: MyContext): Promise<boolean> {
+    isUserAuth(req.session.userId);
     await User.delete({});
     return true;
   }

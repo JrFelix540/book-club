@@ -1,10 +1,4 @@
-import {
-  CommentUpvote,
-  Post,
-  Upvote,
-  User,
-  UserComment,
-} from "../entities";
+import { CommentUpvote, Post, User, UserComment } from "../entities";
 import { MyContext } from "../types";
 import {
   Arg,
@@ -20,6 +14,7 @@ import {
 } from "type-graphql";
 import { FieldError } from "./user";
 import { getConnection, Repository } from "typeorm";
+import { isUserAuth } from "../utils/isUserAuth";
 
 @ObjectType()
 export class UserCommentResponse {
@@ -104,6 +99,7 @@ export default class UserCommentResolver {
     @Arg("value", () => Int) value: number,
     @Ctx() { req }: MyContext,
   ): Promise<CommentUpvoteResponse> {
+    isUserAuth(req.session.userId);
     const userId = req.session.userId;
     const user = await User.findOne({ id: userId });
     const comment = await UserComment.findOne({ id: commentId });
@@ -210,10 +206,7 @@ export default class UserCommentResolver {
     @Arg("postId") postId: number,
     @Ctx() { req }: MyContext,
   ): Promise<UserCommentResponse> {
-    if (!req.session.userId) {
-      throw Error(`User not authenticated`);
-    }
-
+    isUserAuth(req.session.userId);
     const user = await User.findOne({
       where: { id: req.session.userId },
     });
@@ -275,50 +268,43 @@ export default class UserCommentResolver {
   }
 
   @Mutation(() => Boolean)
-  async deleteAllComments(): Promise<Boolean> {
+  async deleteAllComments(
+    @Ctx() { req }: MyContext,
+  ): Promise<Boolean> {
+    isUserAuth(req.session.userId);
     await UserComment.delete({});
     return true;
   }
 
   @Mutation(() => Boolean)
-  async resetCommentPoints(@Arg("commentId") commentId: number) {
-    const comment = await UserComment.findOne({ id: commentId });
+  async deleteComment(
+    @Arg("commentId") commentId: number,
+    @Ctx() { req }: MyContext,
+  ) {
+    isUserAuth(req.session.userId);
+    const connection = getConnection();
+    const commentRepository = connection.getRepository(UserComment);
+    const comment = await commentRepository.findOne({
+      where: { id: commentId },
+      relations: ["creator"],
+    });
     if (!comment) {
+      console.log("commentId error");
       return false;
     }
-    comment.points = 0;
-,
+
+    if (comment.creator.id !== req.session.userId) {
+      console.log(`User not authorized`);
+      return false;
+    }
+
     try {
-      await comment.save();
+      await commentRepository.delete({ id: commentId });
     } catch (err) {
       console.log(err);
+      return false;
     }
 
     return true;
-  }
-
-  @Mutation(() => Boolean)
-  async deleteComment(@Arg('commentId') commentId: number, @Ctx() {req}: MyContext){
-    const connection = getConnection()
-    const commentRepository = connection.getRepository(UserComment)
-    const comment = await commentRepository.findOne({where: {id: commentId}, relations: ["creator"]})
-    if(!comment){
-      console.log("commentId error")
-      return false
-    }
-
-    if(comment.creator.id !== req.session.userId){
-      console.log(`User not authorized`)
-      return false
-    }
-
-    try{
-      await commentRepository.delete({id: commentId})
-    } catch(err){
-      console.log(err)
-      return false
-    }
-
-    return true
   }
 }

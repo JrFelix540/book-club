@@ -14,6 +14,7 @@ import {
 import { FieldError } from "./user";
 import { Upvote, User, Community, Post } from "../entities";
 import { getConnection, In, Repository } from "typeorm";
+import { isUserAuth } from "../utils/isUserAuth";
 
 const allRelations = ["community", "comments", "upvotes"];
 
@@ -102,6 +103,7 @@ export default class PostResolver {
     @Arg("value", () => Int) value: number,
   ): Promise<UpvoteResponse> {
     // Check if the person has voted on the post
+    isUserAuth(req.session.userId);
     const checkUpvote = await Upvote.findOne({
       where: { creatorId: req.session.userId, postId: postId },
     });
@@ -113,7 +115,7 @@ export default class PostResolver {
       return {
         errors: [
           {
-            field: "user",
+            field: "User",
             message: "The user does not exist",
           },
         ],
@@ -185,7 +187,8 @@ export default class PostResolver {
   }
 
   @Mutation(() => Boolean)
-  async deleteAllUpvote(): Promise<boolean> {
+  async deleteAllUpvote(@Ctx() { req }: MyContext): Promise<boolean> {
+    isUserAuth(req.session.userId);
     await Upvote.delete({});
     return true;
   }
@@ -255,10 +258,7 @@ export default class PostResolver {
     @Arg("communityId", () => Int) communityId: number,
     @Ctx() { req }: MyContext,
   ): Promise<PostResponse> {
-    if (!req.session.userId) {
-      throw Error("User not authenticated");
-    }
-
+    isUserAuth(req.session.userId);
     if (communityId === undefined) {
       return {
         errors: [
@@ -346,6 +346,7 @@ export default class PostResolver {
     @Arg("content", () => String, { nullable: true }) content: string,
     @Ctx() { req }: MyContext,
   ): Promise<PostResponse> {
+    isUserAuth(req.session.userId);
     const post = await Post.findOne(id);
     if (!post) {
       return {
@@ -392,6 +393,7 @@ export default class PostResolver {
     @Arg("id", () => Int) id: number,
     @Ctx() { req }: MyContext,
   ): Promise<Boolean> {
+    isUserAuth(req.session.userId);
     const post = await Post.findOne(id);
     if (!post) {
       console.log(`post not found`);
@@ -408,7 +410,8 @@ export default class PostResolver {
   }
 
   @Mutation(() => Boolean)
-  async deletePosts(): Promise<Boolean> {
+  async deletePosts(@Ctx() { req }: MyContext): Promise<Boolean> {
+    isUserAuth(req.session.userId);
     await Post.delete({});
     return true;
   }
