@@ -14,7 +14,6 @@ import {
 } from "type-graphql";
 import { FieldError } from "./user";
 import { getConnection, Repository } from "typeorm";
-import { isUserAuth } from "../utils/isUserAuth";
 
 @ObjectType()
 export class UserCommentResponse {
@@ -99,7 +98,16 @@ export default class UserCommentResolver {
     @Arg("value", () => Int) value: number,
     @Ctx() { req }: MyContext,
   ): Promise<CommentUpvoteResponse> {
-    isUserAuth(req.session.userId);
+    if (!req.session.userId) {
+      return {
+        errors: [
+          {
+            field: "User",
+            message: "User not authenticated",
+          },
+        ],
+      };
+    }
     const userId = req.session.userId;
     const user = await User.findOne({ id: userId });
     const comment = await UserComment.findOne({ id: commentId });
@@ -206,7 +214,16 @@ export default class UserCommentResolver {
     @Arg("postId") postId: number,
     @Ctx() { req }: MyContext,
   ): Promise<UserCommentResponse> {
-    isUserAuth(req.session.userId);
+    if (!req.session.userId) {
+      return {
+        errors: [
+          {
+            field: "User",
+            message: "User not authenticated",
+          },
+        ],
+      };
+    }
     const user = await User.findOne({
       where: { id: req.session.userId },
     });
@@ -271,7 +288,9 @@ export default class UserCommentResolver {
   async deleteAllComments(
     @Ctx() { req }: MyContext,
   ): Promise<Boolean> {
-    isUserAuth(req.session.userId);
+    if (!req.session.userId) {
+      return false;
+    }
     await UserComment.delete({});
     return true;
   }
@@ -281,7 +300,9 @@ export default class UserCommentResolver {
     @Arg("commentId") commentId: number,
     @Ctx() { req }: MyContext,
   ) {
-    isUserAuth(req.session.userId);
+    if (!req.session.userId) {
+      return false;
+    }
     const connection = getConnection();
     const commentRepository = connection.getRepository(UserComment);
     const comment = await commentRepository.findOne({

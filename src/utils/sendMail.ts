@@ -1,4 +1,5 @@
-import nodemailer from 'nodemailer'
+import nodemailer from "nodemailer";
+import config from "../config";
 // async..await is not allowed in global scope, must use a wrapper
 export async function sendMail(to: string, html: string) {
   // Generate test SMTP service account from ethereal.email
@@ -10,8 +11,8 @@ export async function sendMail(to: string, html: string) {
     port: 587,
     secure: false, // true for 465, false for other ports
     auth: {
-      user: 'rukobxl7gcdirisq@ethereal.email', // generated ethereal user
-      pass: 'SFEr6vmCaxNBEc9mv8', // generated ethereal password
+      user: config.nodemailerEmail,
+      pass: config.nodemailerPassword, // generated ethereal password
     },
   });
 
@@ -20,7 +21,7 @@ export async function sendMail(to: string, html: string) {
     from: '"Fred Foo 👻" <foo@example.com>', // sender address
     to, // list of receivers
     subject: "Reset Password", // plain text body
-    html // html body
+    html, // html body
   });
 
   console.log("Message sent: %s", info.messageId);
@@ -30,5 +31,3 @@ export async function sendMail(to: string, html: string) {
   console.log("Preview URL: %s", nodemailer.getTestMessageUrl(info));
   // Preview URL: https://ethereal.email/message/WaQKMgKddxQDoou...
 }
-
-

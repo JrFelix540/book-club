@@ -1,5 +1,5 @@
 export const isUserAuth = (userId: number | null) => {
-  if (userId) {
+  if (!userId) {
     return {
       error: [
         {

@@ -13,8 +13,7 @@ import {
 } from "type-graphql";
 import { FieldError } from "./user";
 import { Upvote, User, Community, Post } from "../entities";
-import { getConnection, In, Repository } from "typeorm";
-import { isUserAuth } from "../utils/isUserAuth";
+import { getConnection, Repository } from "typeorm";
 
 const allRelations = ["community", "comments", "upvotes"];
 
@@ -31,6 +30,18 @@ export class PostResponse {
 export class UpvoteResponse {
   @Field(() => Upvote, { nullable: true })
   upvote?: Upvote;
+  @Field(() => [FieldError], { nullable: true })
+  errors?: FieldError[];
+}
+
+@ObjectType()
+export class PaginatedPosts {
+  @Field(() => [Post], { nullable: true })
+  posts: Post[];
+
+  @Field(() => Boolean)
+  hasMore: boolean;
+
   @Field(() => [FieldError], { nullable: true })
   errors?: FieldError[];
 }
@@ -103,7 +114,16 @@ export default class PostResolver {
     @Arg("value", () => Int) value: number,
   ): Promise<UpvoteResponse> {
     // Check if the person has voted on the post
-    isUserAuth(req.session.userId);
+    if (!req.session.userId) {
+      return {
+        errors: [
+          {
+            field: "User",
+            message: "User not authenticated",
+          },
+        ],
+      };
+    }
     const checkUpvote = await Upvote.findOne({
       where: { creatorId: req.session.userId, postId: postId },
     });
@@ -188,58 +208,133 @@ export default class PostResolver {
 
   @Mutation(() => Boolean)
   async deleteAllUpvote(@Ctx() { req }: MyContext): Promise<boolean> {
-    isUserAuth(req.session.userId);
+    if (!req.session.userId) {
+      return false;
+    }
     await Upvote.delete({});
     return true;
   }
 
-  @Query(() => [Post], { nullable: true })
-  async posts(): Promise<Post[]> {
-    const posts = await Post.find({ relations: allRelations });
-    return posts;
+  @Query(() => PaginatedPosts)
+  async posts(
+    @Arg("limit", () => Int) limit: number,
+    @Arg("cursor", () => String, { nullable: true })
+    cursor: string | null,
+  ): Promise<PaginatedPosts> {
+    const connection = getConnection();
+
+    const realLimit = Math.min(50, limit);
+    const realLimitPlusOne = realLimit + 1;
+
+    const replacements: any[] = [realLimitPlusOne];
+
+    if (cursor) {
+      replacements.push(new Date(parseInt(cursor)));
+    }
+
+    const posts = await connection.query(
+      `
+    select p.* 
+    from post p
+    ${cursor ? `where p."createdAt" < $2` : ``}
+    order by p.points DESC
+    limit $1
+    `,
+      replacements,
+    );
+
+    return {
+      posts: posts.slice(0, realLimit),
+      hasMore: posts.length === realLimitPlusOne,
+    };
   }
 
-  @Query(() => [Post], { nullable: true })
-  async myCommunitiesPosts(@Ctx() { req }: MyContext) {
+  @Query(() => PaginatedPosts)
+  async myCommunitiesPosts(
+    @Ctx() { req }: MyContext,
+    @Arg("limit", () => Int) limit: number,
+    @Arg("cursor", () => String, { nullable: true })
+    cursor: string | null,
+  ): Promise<PaginatedPosts> {
     const connection = getConnection();
     const userRepository: Repository<User> = connection.getRepository(
       User,
     );
-    const postRepository: Repository<Post> = connection.getRepository(
-      Post,
-    );
+    const realLimit = Math.min(20, limit);
+    const realLimitPlusOne = Math.min(20, limit) + 1;
+    const replacements: any[] = [realLimitPlusOne];
+    if (cursor) {
+      replacements.push(new Date(parseInt(cursor)));
+    }
     const user = await userRepository.findOne({
       where: { id: req.session.userId },
       relations: ["memberCommunities"],
     });
     if (!user) {
-      return null;
+      return {
+        posts: [],
+        hasMore: false,
+        errors: [
+          {
+            field: "user",
+            message: "User not found",
+          },
+        ],
+      };
     }
     const communityIds = user.memberCommunities.map(
       (comm) => comm.id,
     );
+    const posts = await connection.query(
+      `
+    select p.*
+    from post p
+    where (p."communityId" in (${communityIds}))
+    ${cursor ? `and p."createdAt" < $2` : ``}
+    order by p.points DESC
+    limit $1
 
-    const posts = await postRepository.find({
-      where: { communityId: In(communityIds) },
-      relations: ["community", "upvotes"],
-    });
-
-    return posts;
+    `,
+      replacements,
+    );
+    return {
+      posts: posts.slice(0, realLimit),
+      hasMore: realLimitPlusOne === posts.length,
+    };
   }
 
-  @Query(() => [Post], { nullable: true })
+  @Query(() => PaginatedPosts, { nullable: true })
   async communityPosts(
     @Arg("communityId") communityId: number,
-  ): Promise<Post[]> {
+    @Arg("limit", () => Int) limit: number,
+    @Arg("cursor", () => String, { nullable: true })
+    cursor: string | null,
+  ): Promise<PaginatedPosts> {
     const connection = getConnection();
-    const postsRepository: Repository<Post> = connection.getRepository(
-      Post,
+    const realLimit = Math.min(20, limit);
+    const realLimitPlusOne = Math.min(20, limit) + 1;
+    const replacements: any[] = [realLimitPlusOne];
+
+    if (cursor) {
+      replacements.push(new Date(parseInt(cursor)));
+    }
+
+    const posts = await connection.query(
+      `
+      select p.* 
+      from post p
+      where (p."communityId" = ${communityId})
+      ${cursor ? `and p."createdAt" < $2` : ``}
+      order by p.points DESC
+      limit $1
+    `,
+      replacements,
     );
-    const posts = await postsRepository.find({
-      where: { communityId },
-      relations: allRelations,
-    });
-    return posts;
+
+    return {
+      posts: posts.slice(0, realLimit),
+      hasMore: posts.realLimitPlusOne === posts.length,
+    };
   }
 
   @Query(() => Post)
@@ -258,7 +353,16 @@ export default class PostResolver {
     @Arg("communityId", () => Int) communityId: number,
     @Ctx() { req }: MyContext,
   ): Promise<PostResponse> {
-    isUserAuth(req.session.userId);
+    if (!req.session.userId) {
+      return {
+        errors: [
+          {
+            field: "User",
+            message: "User not authenticated",
+          },
+        ],
+      };
+    }
     if (communityId === undefined) {
       return {
         errors: [
@@ -346,7 +450,16 @@ export default class PostResolver {
     @Arg("content", () => String, { nullable: true }) content: string,
     @Ctx() { req }: MyContext,
   ): Promise<PostResponse> {
-    isUserAuth(req.session.userId);
+    if (!req.session.userId) {
+      return {
+        errors: [
+          {
+            field: "User",
+            message: "User not authenticated",
+          },
+        ],
+      };
+    }
     const post = await Post.findOne(id);
     if (!post) {
       return {
@@ -393,7 +506,9 @@ export default class PostResolver {
     @Arg("id", () => Int) id: number,
     @Ctx() { req }: MyContext,
   ): Promise<Boolean> {
-    isUserAuth(req.session.userId);
+    if (!req.session.userId) {
+      return false;
+    }
     const post = await Post.findOne(id);
     if (!post) {
       console.log(`post not found`);
@@ -411,7 +526,9 @@ export default class PostResolver {
 
   @Mutation(() => Boolean)
   async deletePosts(@Ctx() { req }: MyContext): Promise<Boolean> {
-    isUserAuth(req.session.userId);
+    if (!req.session.userId) {
+      return false;
+    }
     await Post.delete({});
     return true;
   }

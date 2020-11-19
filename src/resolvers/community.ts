@@ -14,7 +14,6 @@ import {
 import { FieldError } from "./user";
 import { getConnection, Repository } from "typeorm";
 import { User, Community } from "../entities";
-import { isUserAuth } from "../utils/isUserAuth";
 
 const allRelations: string[] = ["posts", "favoriteBooks"];
 
@@ -111,7 +110,16 @@ export default class CommunityResolver {
     @Arg("name") name: string,
     @Arg("description") description: string,
   ): Promise<CommunityResponse> {
-    isUserAuth(req.session.userId);
+    if (!req.session.userId) {
+      return {
+        errors: [
+          {
+            field: "User",
+            message: "User not authorized",
+          },
+        ],
+      };
+    }
     const user = await User.findOne({
       where: { id: req.session.userId },
     });
@@ -163,7 +171,17 @@ export default class CommunityResolver {
     @Ctx() { req }: MyContext,
     @Arg("id", () => Int) id: number,
   ): Promise<BooleanFieldResponse> {
-    isUserAuth(req.session.userId);
+    if (!req.session.userId) {
+      return {
+        ok: false,
+        errors: [
+          {
+            field: "User",
+            message: "User not authenticated",
+          },
+        ],
+      };
+    }
     const { userId } = req.session;
     if (!userId) {
       return {
@@ -244,7 +262,17 @@ export default class CommunityResolver {
     @Ctx() { req }: MyContext,
     @Arg("communityId") communityId: number,
   ): Promise<BooleanFieldResponse> {
-    isUserAuth(req.session.userId);
+    if (!req.session.userId) {
+      return {
+        ok: false,
+        errors: [
+          {
+            field: "User",
+            message: "User not authenticated",
+          },
+        ],
+      };
+    }
     const connection = getConnection();
     const communityRepository: Repository<Community> = connection.getRepository(
       Community,
@@ -299,7 +327,9 @@ export default class CommunityResolver {
 
   @Mutation(() => Boolean)
   async deleteAllCommunities(@Ctx() { req }: MyContext) {
-    isUserAuth(req.session.userId);
+    if (!req.session.userId) {
+      return false;
+    }
     await Community.delete({});
 
     return true;

@@ -31,13 +31,11 @@ import {
 import { createUserLoader } from "./utils/createUserLoader";
 import { createCommunityLoader } from "./utils/createCommunityLoader";
 import { createUpvoteLoader } from "./utils/createUpvoteLoader";
-
+import config from "./config";
 const main = async () => {
   await createConnection({
     type: "postgres",
-    database: "bookclub",
-    username: "saleor",
-    password: "saleor",
+    url: config.databaseUrl,
     logging: true,
     synchronize: true,
     entities: [
@@ -85,7 +83,7 @@ const main = async () => {
 
   app.use(
     cors({
-      origin: "http://localhost:3000",
+      origin: config.corsOriginUrl,
       credentials: true,
     }),
   );

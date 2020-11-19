@@ -16,7 +16,6 @@ import { v4 } from "uuid";
 import { sendMail } from "../utils/sendMail";
 import { getConnection, Repository } from "typeorm";
 import { User } from "../entities";
-import { isUserAuth } from "../utils/isUserAuth";
 
 @ObjectType()
 export class FieldError {
@@ -276,12 +275,15 @@ export default class UserResolver {
       return null;
     }
     const user = await User.findOne(req.session.userId);
+    console.log(process.env.DATABASE_URL);
     return user;
   }
 
   @Mutation(() => Boolean)
   async deleteUsers(@Ctx() { req }: MyContext): Promise<boolean> {
-    isUserAuth(req.session.userId);
+    if (!req.session.userId) {
+      return false;
+    }
     await User.delete({});
     return true;
   }
