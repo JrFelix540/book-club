@@ -285,6 +285,13 @@ export default class PostResolver {
     const communityIds = user.memberCommunities.map(
       (comm) => comm.id,
     );
+
+    if (communityIds.length === 0) {
+      return {
+        posts: [],
+        hasMore: false,
+      };
+    }
     const posts = await connection.query(
       `
     select p.*
