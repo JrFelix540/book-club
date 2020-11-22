@@ -275,7 +275,6 @@ export default class UserResolver {
       return null;
     }
     const user = await User.findOne(req.session.userId);
-    console.log(process.env.DATABASE_URL);
     return user;
   }
 

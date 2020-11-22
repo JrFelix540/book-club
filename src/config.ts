@@ -5,4 +5,5 @@ export default {
   corsOriginUrl: process.env.CORS_ORIGIN_URL,
   nodemailerEmail: process.env.NODE_MAILER_USER,
   nodemailerPassword: process.env.NODE_MAILER_PASSWORD,
+  redisUrl: process.env.REDIS_URL,
 };
