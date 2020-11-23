@@ -99,8 +99,8 @@ const main = () => __awaiter(void 0, void 0, void 0, function* () {
         app,
         cors: false,
     });
-    app.listen(4040, () => {
-        console.log(`Server running at port 4040`);
+    app.listen(config_1.default.port, () => {
+        console.log(`Server running at port ${config_1.default.port}`);
     });
 });
 main().catch((err) => console.log(err));

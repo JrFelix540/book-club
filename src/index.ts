@@ -113,8 +113,8 @@ const main = async () => {
     cors: false,
   });
 
-  app.listen(4040, () => {
-    console.log(`Server running at port 4040`);
+  app.listen(config.port, () => {
+    console.log(`Server running at port ${config.port}`);
   });
 };
 

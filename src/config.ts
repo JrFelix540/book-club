@@ -6,4 +6,5 @@ export default {
   nodemailerEmail: process.env.NODE_MAILER_USER,
   nodemailerPassword: process.env.NODE_MAILER_PASSWORD,
   redisUrl: process.env.REDIS_URL,
+  port: process.env.PORT,
 };
