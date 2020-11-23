@@ -1,0 +1,1 @@
+{"version":3,"file":"isUserAuth.js","sourceRoot":"","sources":["../../src/utils/isUserAuth.ts"],"names":[],"mappings":";;;AAAa,QAAA,UAAU,GAAG,CAAC,MAAqB,EAAE,EAAE;IAClD,IAAI,CAAC,MAAM,EAAE;QACX,OAAO;YACL,KAAK,EAAE;gBACL;oBACE,KAAK,EAAE,MAAM;oBACb,OAAO,EAAE,wBAAwB;iBAClC;aACF;SACF,CAAC;KACH;IACD,OAAO;AACT,CAAC,CAAC"}
