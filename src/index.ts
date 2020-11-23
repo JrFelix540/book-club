@@ -60,7 +60,9 @@ const main = async () => {
 
   const app = express();
 
-  const redis = new Redis(config.redisUrl);
+  const redis = new Redis(config.redisUrl, {
+    password: config.redisPassword,
+  });
   const RedisStore = connectRedis(session);
 
   app.use(
