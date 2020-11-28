@@ -85,7 +85,7 @@ const main = async () => {
 
   app.use(
     cors({
-      origin: `https://bookclub-web-qglz54cbd.vercel.app/`,
+      origin: config.corsOriginUrl,
       credentials: true,
     }),
   );
