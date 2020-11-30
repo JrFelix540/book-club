@@ -59,7 +59,7 @@ const main = async () => {
   });
 
   const app = express();
-
+  console.log(constants.__prod__);
   const redis = new Redis(config.redisUrl, {
     password: config.redisPassword,
   });
