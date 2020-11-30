@@ -64,7 +64,7 @@ const main = async () => {
     password: config.redisPassword,
   });
   const RedisStore = connectRedis(session);
-
+  app.set("trust proxy", 1);
   app.use(
     session({
       name: constants.USERID_COOKIE,
