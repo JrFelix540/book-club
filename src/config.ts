@@ -8,4 +8,5 @@ export default {
   redisUrl: process.env.REDIS_URL,
   redisPassword: process.env.REDIS_PASSWORD,
   port: process.env.PORT,
+  development: process.env.NODE_ENV,
 };

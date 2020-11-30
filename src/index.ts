@@ -75,7 +75,8 @@ const main = async () => {
       cookie: {
         maxAge: 1000 * 60 * 60 * 24,
         sameSite: "lax",
-        secure: false,
+        secure: constants.__prod__,
+        domain: constants.__prod__ ? ".herokuapp.com/" : undefined,
       },
       saveUninitialized: false,
       secret: "route540",
