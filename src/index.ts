@@ -76,9 +76,7 @@ const main = async () => {
         maxAge: 1000 * 60 * 60 * 24,
         sameSite: "lax",
         secure: constants.__prod__,
-        domain: constants.__prod__
-          ? "bookclub-web.vercel.app"
-          : undefined,
+        domain: constants.__prod__ ? ".vercel.app" : undefined,
       },
       saveUninitialized: false,
       secret: "route540",
