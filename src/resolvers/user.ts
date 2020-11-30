@@ -274,6 +274,7 @@ export default class UserResolver {
     if (!req.session.userId) {
       return null;
     }
+    console.log("production value", constants.__prod__);
     const user = await User.findOne(req.session.userId);
     return user;
   }
