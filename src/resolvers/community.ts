@@ -14,6 +14,8 @@ import {
 import { FieldError } from "./user";
 import { getConnection, Repository } from "typeorm";
 import { User, Community } from "../entities";
+import jwt from "jsonwebtoken";
+import constants from "../constants";
 
 const allRelations: string[] = ["posts", "favoriteBooks"];
 
@@ -55,7 +57,18 @@ export default class CommunityResolver {
 
   @FieldResolver(() => Boolean)
   hasJoined(@Root() community: Community, @Ctx() { req }: MyContext) {
-    const userId = req.session.userId;
+    let userId: number;
+    if (req.headers.authorization) {
+      const token = req.headers.authorization.split(`Bearer `)[1];
+      jwt.verify(token, constants.JWT_SECRET, (err, decodedToken) => {
+        if (err) {
+          return false;
+        }
+        const user: any = decodedToken;
+        userId = user.userId;
+        return;
+      });
+    }
 
     const found = community.memberIds.find(
       (commId) => commId === userId,
@@ -110,7 +123,19 @@ export default class CommunityResolver {
     @Arg("name") name: string,
     @Arg("description") description: string,
   ): Promise<CommunityResponse> {
-    if (!req.session.userId) {
+    let userId;
+    if (req.headers.authorization) {
+      const token = req.headers.authorization.split(`Bearer `)[1];
+      jwt.verify(token, constants.JWT_SECRET, (err, decodedToken) => {
+        if (err) {
+          return false;
+        }
+        const user: any = decodedToken;
+        userId = user.userId;
+        return;
+      });
+    }
+    if (!userId) {
       return {
         errors: [
           {
@@ -121,7 +146,7 @@ export default class CommunityResolver {
       };
     }
     const user = await User.findOne({
-      where: { id: req.session.userId },
+      where: { id: userId },
     });
 
     const connection = getConnection();
@@ -171,7 +196,19 @@ export default class CommunityResolver {
     @Ctx() { req }: MyContext,
     @Arg("id", () => Int) id: number,
   ): Promise<BooleanFieldResponse> {
-    if (!req.session.userId) {
+    let userId;
+    if (req.headers.authorization) {
+      const token = req.headers.authorization.split(`Bearer `)[1];
+      jwt.verify(token, constants.JWT_SECRET, (err, decodedToken) => {
+        if (err) {
+          return false;
+        }
+        const user: any = decodedToken;
+        userId = user.userId;
+        return;
+      });
+    }
+    if (!userId) {
       return {
         ok: false,
         errors: [
@@ -182,17 +219,7 @@ export default class CommunityResolver {
         ],
       };
     }
-    const { userId } = req.session;
-    if (!userId) {
-      return {
-        errors: [
-          {
-            field: "User",
-            message: "User is not authenticated",
-          },
-        ],
-      };
-    }
+
     const user = await User.findOne({ where: { id: userId } });
     if (!user) {
       return {
@@ -262,7 +289,19 @@ export default class CommunityResolver {
     @Ctx() { req }: MyContext,
     @Arg("communityId") communityId: number,
   ): Promise<BooleanFieldResponse> {
-    if (!req.session.userId) {
+    let userId;
+    if (req.headers.authorization) {
+      const token = req.headers.authorization.split(`Bearer `)[1];
+      jwt.verify(token, constants.JWT_SECRET, (err, decodedToken) => {
+        if (err) {
+          return false;
+        }
+        const user: any = decodedToken;
+        userId = user.userId;
+        return;
+      });
+    }
+    if (!userId) {
       return {
         ok: false,
         errors: [
@@ -278,7 +317,7 @@ export default class CommunityResolver {
       Community,
     );
 
-    const user = await User.findOne({ id: req.session.userId });
+    const user = await User.findOne({ id: userId });
     if (!user) {
       return {
         errors: [
@@ -323,15 +362,5 @@ export default class CommunityResolver {
     return {
       ok: true,
     };
-  }
-
-  @Mutation(() => Boolean)
-  async deleteAllCommunities(@Ctx() { req }: MyContext) {
-    if (!req.session.userId) {
-      return false;
-    }
-    await Community.delete({});
-
-    return true;
   }
 }

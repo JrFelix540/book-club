@@ -14,6 +14,8 @@ import {
 } from "type-graphql";
 import { FieldError } from "./user";
 import { getConnection, Repository } from "typeorm";
+import jwt from "jsonwebtoken";
+import constants from "../constants";
 
 @ObjectType()
 export class UserCommentResponse {
@@ -40,7 +42,18 @@ export default class UserCommentResolver {
     @Root() userComment: UserComment,
     @Ctx() { req }: MyContext,
   ) {
-    const userId = req.session.userId;
+    let userId;
+    if (req.headers.authorization) {
+      const token = req.headers.authorization.split(`Bearer `)[1];
+      jwt.verify(token, constants.JWT_SECRET, (err, decodedToken) => {
+        if (err) {
+          return false;
+        }
+        const user: any = decodedToken;
+        userId = user.userId;
+        return;
+      });
+    }
 
     const upvote = await CommentUpvote.findOne({
       where: { commentId: userComment.id, creatorId: userId },
@@ -58,7 +71,18 @@ export default class UserCommentResolver {
     @Root() userComment: UserComment,
     @Ctx() { req }: MyContext,
   ) {
-    const userId = req.session.userId;
+    let userId;
+    if (req.headers.authorization) {
+      const token = req.headers.authorization.split(`Bearer `)[1];
+      jwt.verify(token, constants.JWT_SECRET, (err, decodedToken) => {
+        if (err) {
+          return false;
+        }
+        const user: any = decodedToken;
+        userId = user.userId;
+        return;
+      });
+    }
 
     const upvote = await CommentUpvote.findOne({
       where: { commentId: userComment.id, creatorId: userId },
@@ -75,6 +99,18 @@ export default class UserCommentResolver {
     @Root() userComment: UserComment,
     @Ctx() { req }: MyContext,
   ) {
+    let userId;
+    if (req.headers.authorization) {
+      const token = req.headers.authorization.split(`Bearer `)[1];
+      jwt.verify(token, constants.JWT_SECRET, (err, decodedToken) => {
+        if (err) {
+          return false;
+        }
+        const user: any = decodedToken;
+        userId = user.userId;
+        return;
+      });
+    }
     const connection = getConnection();
     const commentRepository: Repository<UserComment> = connection.getRepository(
       UserComment,
@@ -85,7 +121,7 @@ export default class UserCommentResolver {
       where: { id: userComment.id },
     });
 
-    if (comment?.creator.id === req.session.userId) {
+    if (comment?.creator.id === userId) {
       return true;
     } else {
       return false;
@@ -98,7 +134,20 @@ export default class UserCommentResolver {
     @Arg("value", () => Int) value: number,
     @Ctx() { req }: MyContext,
   ): Promise<CommentUpvoteResponse> {
-    if (!req.session.userId) {
+    let userId;
+    if (req.headers.authorization) {
+      const token = req.headers.authorization.split(`Bearer `)[1];
+      jwt.verify(token, constants.JWT_SECRET, (err, decodedToken) => {
+        if (err) {
+          return false;
+        }
+        const user: any = decodedToken;
+        userId = user.userId;
+        return;
+      });
+    }
+
+    if (!userId) {
       return {
         errors: [
           {
@@ -108,7 +157,6 @@ export default class UserCommentResolver {
         ],
       };
     }
-    const userId = req.session.userId;
     const user = await User.findOne({ id: userId });
     const comment = await UserComment.findOne({ id: commentId });
 
@@ -214,7 +262,19 @@ export default class UserCommentResolver {
     @Arg("postId") postId: number,
     @Ctx() { req }: MyContext,
   ): Promise<UserCommentResponse> {
-    if (!req.session.userId) {
+    let userId;
+    if (req.headers.authorization) {
+      const token = req.headers.authorization.split(`Bearer `)[1];
+      jwt.verify(token, constants.JWT_SECRET, (err, decodedToken) => {
+        if (err) {
+          return false;
+        }
+        const user: any = decodedToken;
+        userId = user.userId;
+        return;
+      });
+    }
+    if (!userId) {
       return {
         errors: [
           {
@@ -225,7 +285,7 @@ export default class UserCommentResolver {
       };
     }
     const user = await User.findOne({
-      where: { id: req.session.userId },
+      where: { id: userId },
     });
     if (!user) {
       return {
@@ -288,7 +348,19 @@ export default class UserCommentResolver {
   async deleteAllComments(
     @Ctx() { req }: MyContext,
   ): Promise<Boolean> {
-    if (!req.session.userId) {
+    let userId;
+    if (req.headers.authorization) {
+      const token = req.headers.authorization.split(`Bearer `)[1];
+      jwt.verify(token, constants.JWT_SECRET, (err, decodedToken) => {
+        if (err) {
+          return false;
+        }
+        const user: any = decodedToken;
+        userId = user.userId;
+        return;
+      });
+    }
+    if (!userId) {
       return false;
     }
     await UserComment.delete({});
@@ -300,7 +372,19 @@ export default class UserCommentResolver {
     @Arg("commentId") commentId: number,
     @Ctx() { req }: MyContext,
   ) {
-    if (!req.session.userId) {
+    let userId;
+    if (req.headers.authorization) {
+      const token = req.headers.authorization.split(`Bearer `)[1];
+      jwt.verify(token, constants.JWT_SECRET, (err, decodedToken) => {
+        if (err) {
+          return false;
+        }
+        const user: any = decodedToken;
+        userId = user.userId;
+        return;
+      });
+    }
+    if (!userId) {
       return false;
     }
     const connection = getConnection();
@@ -314,7 +398,7 @@ export default class UserCommentResolver {
       return false;
     }
 
-    if (comment.creator.id !== req.session.userId) {
+    if (comment.creator.id !== userId) {
       console.log(`User not authorized`);
       return false;
     }

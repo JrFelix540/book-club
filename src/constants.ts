@@ -1,5 +1,7 @@
+import config from "./config";
+
 const constants = {
-  USERID_COOKIE: `qid`,
+  JWT_SECRET: "qid",
   FORGOT_PASSWORD: `fgp`,
   __prod__: process.env.NODE_ENV === `production`,
 };

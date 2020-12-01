@@ -20,12 +20,17 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.BooleanFieldResponse = exports.CommunityResponse = void 0;
 const type_graphql_1 = require("type-graphql");
 const user_1 = require("./user");
 const typeorm_1 = require("typeorm");
 const entities_1 = require("../entities");
+const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
+const constants_1 = __importDefault(require("../constants"));
 const allRelations = ["posts", "favoriteBooks"];
 let CommunityResponse = class CommunityResponse {
 };
@@ -63,7 +68,18 @@ let CommunityResolver = class CommunityResolver {
         return userLoader.loadMany(community.memberIds);
     }
     hasJoined(community, { req }) {
-        const userId = req.session.userId;
+        let userId;
+        if (req.headers.authorization) {
+            const token = req.headers.authorization.split(`Bearer `)[1];
+            jsonwebtoken_1.default.verify(token, constants_1.default.JWT_SECRET, (err, decodedToken) => {
+                if (err) {
+                    return false;
+                }
+                const user = decodedToken;
+                userId = user.userId;
+                return;
+            });
+        }
         const found = community.memberIds.find((commId) => commId === userId);
         if (found) {
             return true;
@@ -103,7 +119,19 @@ let CommunityResolver = class CommunityResolver {
     }
     createCommunity({ req }, name, description) {
         return __awaiter(this, void 0, void 0, function* () {
-            if (!req.session.userId) {
+            let userId;
+            if (req.headers.authorization) {
+                const token = req.headers.authorization.split(`Bearer `)[1];
+                jsonwebtoken_1.default.verify(token, constants_1.default.JWT_SECRET, (err, decodedToken) => {
+                    if (err) {
+                        return false;
+                    }
+                    const user = decodedToken;
+                    userId = user.userId;
+                    return;
+                });
+            }
+            if (!userId) {
                 return {
                     errors: [
                         {
@@ -114,7 +142,7 @@ let CommunityResolver = class CommunityResolver {
                 };
             }
             const user = yield entities_1.User.findOne({
-                where: { id: req.session.userId },
+                where: { id: userId },
             });
             const connection = typeorm_1.getConnection();
             if (!user) {
@@ -157,24 +185,25 @@ let CommunityResolver = class CommunityResolver {
     }
     joinCommunity({ req }, id) {
         return __awaiter(this, void 0, void 0, function* () {
-            if (!req.session.userId) {
+            let userId;
+            if (req.headers.authorization) {
+                const token = req.headers.authorization.split(`Bearer `)[1];
+                jsonwebtoken_1.default.verify(token, constants_1.default.JWT_SECRET, (err, decodedToken) => {
+                    if (err) {
+                        return false;
+                    }
+                    const user = decodedToken;
+                    userId = user.userId;
+                    return;
+                });
+            }
+            if (!userId) {
                 return {
                     ok: false,
                     errors: [
                         {
                             field: "User",
                             message: "User not authenticated",
-                        },
-                    ],
-                };
-            }
-            const { userId } = req.session;
-            if (!userId) {
-                return {
-                    errors: [
-                        {
-                            field: "User",
-                            message: "User is not authenticated",
                         },
                     ],
                 };
@@ -237,7 +266,19 @@ let CommunityResolver = class CommunityResolver {
     }
     leaveCommunity({ req }, communityId) {
         return __awaiter(this, void 0, void 0, function* () {
-            if (!req.session.userId) {
+            let userId;
+            if (req.headers.authorization) {
+                const token = req.headers.authorization.split(`Bearer `)[1];
+                jsonwebtoken_1.default.verify(token, constants_1.default.JWT_SECRET, (err, decodedToken) => {
+                    if (err) {
+                        return false;
+                    }
+                    const user = decodedToken;
+                    userId = user.userId;
+                    return;
+                });
+            }
+            if (!userId) {
                 return {
                     ok: false,
                     errors: [
@@ -250,7 +291,7 @@ let CommunityResolver = class CommunityResolver {
             }
             const connection = typeorm_1.getConnection();
             const communityRepository = connection.getRepository(entities_1.Community);
-            const user = yield entities_1.User.findOne({ id: req.session.userId });
+            const user = yield entities_1.User.findOne({ id: userId });
             if (!user) {
                 return {
                     errors: [
@@ -288,15 +329,6 @@ let CommunityResolver = class CommunityResolver {
             return {
                 ok: true,
             };
-        });
-    }
-    deleteAllCommunities({ req }) {
-        return __awaiter(this, void 0, void 0, function* () {
-            if (!req.session.userId) {
-                return false;
-            }
-            yield entities_1.Community.delete({});
-            return true;
         });
     }
 };
@@ -368,13 +400,6 @@ __decorate([
     __metadata("design:paramtypes", [Object, Number]),
     __metadata("design:returntype", Promise)
 ], CommunityResolver.prototype, "leaveCommunity", null);
-__decorate([
-    type_graphql_1.Mutation(() => Boolean),
-    __param(0, type_graphql_1.Ctx()),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object]),
-    __metadata("design:returntype", Promise)
-], CommunityResolver.prototype, "deleteAllCommunities", null);
 CommunityResolver = __decorate([
     type_graphql_1.Resolver(entities_1.Community)
 ], CommunityResolver);

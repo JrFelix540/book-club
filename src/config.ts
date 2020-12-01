@@ -9,4 +9,5 @@ export default {
   redisPassword: process.env.REDIS_PASSWORD,
   port: process.env.PORT,
   development: process.env.NODE_ENV,
+  jwtSecret: process.env.JWT_SECRET,
 };

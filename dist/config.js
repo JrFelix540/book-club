@@ -11,6 +11,9 @@ exports.default = {
     nodemailerEmail: process.env.NODE_MAILER_USER,
     nodemailerPassword: process.env.NODE_MAILER_PASSWORD,
     redisUrl: process.env.REDIS_URL,
+    redisPassword: process.env.REDIS_PASSWORD,
     port: process.env.PORT,
+    development: process.env.NODE_ENV,
+    jwtSecret: process.env.JWT_SECRET,
 };
 //# sourceMappingURL=config.js.map

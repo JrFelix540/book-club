@@ -59,30 +59,29 @@ const main = async () => {
   });
 
   const app = express();
-  console.log(constants.__prod__);
   const redis = new Redis(config.redisUrl, {
     password: config.redisPassword,
   });
-  const RedisStore = connectRedis(session);
-  app.set("trust proxy", 1);
-  app.use(
-    session({
-      name: constants.USERID_COOKIE,
-      store: new RedisStore({
-        client: redis,
-        disableTouch: true,
-      }),
-      cookie: {
-        maxAge: 1000 * 60 * 60 * 24,
-        sameSite: "lax",
-        secure: constants.__prod__,
-        domain: constants.__prod__ ? ".vercel.app" : undefined,
-      },
-      saveUninitialized: false,
-      secret: "route540",
-      resave: false,
-    }),
-  );
+  // const RedisStore = connectRedis(session);
+  // app.set("trust proxy", 1);
+  // app.use(
+  //   session({
+  //     name: constants.USERID_COOKIE,
+  //     store: new RedisStore({
+  //       client: redis,
+  //       disableTouch: true,
+  //     }),
+  //     cookie: {
+  //       maxAge: 1000 * 60 * 60 * 24,
+  //       sameSite: "lax",
+  //       secure: constants.__prod__,
+  //       domain: constants.__prod__ ? ".vercel.app" : undefined,
+  //     },
+  //     saveUninitialized: false,
+  //     secret: "route540",
+  //     resave: false,
+  // }),
+  // );
 
   app.use(
     cors({

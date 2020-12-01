@@ -11,6 +11,7 @@ import {
   Resolver,
 } from "type-graphql";
 import argon2 from "argon2";
+import jwt from "jsonwebtoken";
 import { validateUserRegisterInput } from "../utils/validateUserInput";
 import { v4 } from "uuid";
 import { sendMail } from "../utils/sendMail";
@@ -26,6 +27,10 @@ export class FieldError {
   message: string;
 }
 
+export interface UserDecoded {
+  email: string;
+}
+
 @InputType()
 export class UserRegisterInput {
   @Field()
@@ -38,30 +43,18 @@ export class UserRegisterInput {
   password: string;
 }
 
-@InputType()
-class UserLoginInput {
-  @Field()
-  usernameOrEmail: string;
-
-  @Field()
-  password: string;
-}
-
 @ObjectType()
 class UserResponse {
   @Field(() => [FieldError], { nullable: true })
   errors?: FieldError[];
   @Field(() => User, { nullable: true })
   user?: User;
+  @Field(() => String, { nullable: true })
+  token?: string;
 }
 
 @Resolver()
 export default class UserResolver {
-  @Query(() => String)
-  hello() {
-    return `Hello, its me`;
-  }
-
   @Query(() => [User])
   async users(): Promise<User[]> {
     const users = await User.find({});
@@ -70,20 +63,25 @@ export default class UserResolver {
 
   @Mutation(() => UserResponse)
   async register(
-    @Ctx() { req }: MyContext,
-    @Arg("userInput") userInput: UserRegisterInput,
+    @Arg("username") username: string,
+    @Arg("email") email: string,
+    @Arg("password") password: string,
   ): Promise<UserResponse> {
-    const errors = validateUserRegisterInput(userInput);
+    const errors = validateUserRegisterInput({
+      username,
+      email,
+      password,
+    });
     if (errors.length > 0) {
       return {
         errors,
       };
     }
 
-    const hashedPassword = await argon2.hash(userInput.password);
+    const hashedPassword = await argon2.hash(password);
     const user = User.create({
-      username: userInput.username,
-      email: userInput.email,
+      username: username,
+      email: email,
       password: hashedPassword,
     });
 
@@ -119,22 +117,26 @@ export default class UserResolver {
       }
     }
 
-    req.session.userId = user.id;
+    const userId = user.id;
+    const token = jwt.sign({ userId }, constants.JWT_SECRET, {
+      expiresIn: 60 * 60 * 4,
+    });
 
     return {
       user,
+      token,
     };
   }
 
   @Mutation(() => UserResponse)
   async login(
-    @Ctx() { req }: MyContext,
-    @Arg("userInput") userInput: UserLoginInput,
+    @Arg("usernameOrEmail") usernameOrEmail: string,
+    @Arg("password") password: string,
   ): Promise<UserResponse> {
     const user = await User.findOne(
-      userInput.usernameOrEmail.includes("@")
-        ? { where: { email: userInput.usernameOrEmail } }
-        : { where: { username: userInput.usernameOrEmail } },
+      usernameOrEmail.includes("@")
+        ? { where: { email: usernameOrEmail } }
+        : { where: { username: usernameOrEmail } },
     );
 
     if (!user) {
@@ -150,7 +152,7 @@ export default class UserResolver {
 
     const verifyPassword = await argon2.verify(
       user.password,
-      userInput.password,
+      password,
     );
 
     if (!verifyPassword) {
@@ -164,27 +166,20 @@ export default class UserResolver {
       };
     }
 
-    req.session.userId = user.id;
-    console.log(req.session.userId);
+    const userId = user.id;
+
+    const token = jwt.sign({ userId }, constants.JWT_SECRET, {
+      expiresIn: 60 * 60 * 4,
+    });
+
     return {
       user,
+      token,
     };
   }
 
-  @Mutation(() => Boolean) logout(
-    @Ctx() { req, res }: MyContext,
-  ): Promise<boolean> {
-    return new Promise((resolve) =>
-      req.session.destroy((err) => {
-        res.clearCookie(constants.USERID_COOKIE);
-        if (err) {
-          console.log(err);
-          resolve(false);
-          return;
-        }
-        return resolve(true);
-      }),
-    );
+  @Mutation(() => Boolean) logout(): boolean {
+    return true;
   }
 
   @Mutation(() => Boolean)
@@ -271,12 +266,25 @@ export default class UserResolver {
   async me(
     @Ctx() { req }: MyContext,
   ): Promise<User | null | undefined> {
-    if (!req.session.userId) {
+    let user: any;
+    if (req.headers.authorization) {
+      const token = req.headers.authorization.split(`Bearer `)[1];
+      jwt.verify(token, constants.JWT_SECRET, (err, decodedToken) => {
+        if (err) {
+          return null;
+        }
+
+        user = decodedToken;
+        return;
+      });
+    }
+    if (!user) {
       return null;
     }
-    console.log("production value", constants.__prod__);
-    const user = await User.findOne(req.session.userId);
-    return user;
+
+    const currentUser = await User.findOne({ id: user.userId });
+
+    return currentUser;
   }
 
   @Mutation(() => Boolean)
@@ -290,7 +298,19 @@ export default class UserResolver {
 
   @Query(() => User, { nullable: true })
   async meWithCommunities(@Ctx() { req }: MyContext) {
-    if (!req.session.userId) {
+    let userId;
+    if (req.headers.authorization) {
+      const token = req.headers.authorization.split(`Bearer `)[1];
+      jwt.verify(token, constants.JWT_SECRET, (err, decodedToken) => {
+        if (err) {
+          return false;
+        }
+        const user: any = decodedToken;
+        userId = user.userId;
+        return;
+      });
+    }
+    if (!userId) {
       return null;
     }
     const connection = getConnection();
@@ -299,7 +319,7 @@ export default class UserResolver {
     );
 
     const user = await userRepository.findOne({
-      where: { id: req.session.userId },
+      where: { id: userId },
       relations: ["memberCommunities"],
     });
 

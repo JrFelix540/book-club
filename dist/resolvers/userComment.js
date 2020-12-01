@@ -20,12 +20,17 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.CommentUpvoteResponse = exports.UserCommentResponse = void 0;
 const entities_1 = require("../entities");
 const type_graphql_1 = require("type-graphql");
 const user_1 = require("./user");
 const typeorm_1 = require("typeorm");
+const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
+const constants_1 = __importDefault(require("../constants"));
 let UserCommentResponse = class UserCommentResponse {
 };
 __decorate([
@@ -57,7 +62,18 @@ exports.CommentUpvoteResponse = CommentUpvoteResponse;
 let UserCommentResolver = class UserCommentResolver {
     hasVoted(userComment, { req }) {
         return __awaiter(this, void 0, void 0, function* () {
-            const userId = req.session.userId;
+            let userId;
+            if (req.headers.authorization) {
+                const token = req.headers.authorization.split(`Bearer `)[1];
+                jsonwebtoken_1.default.verify(token, constants_1.default.JWT_SECRET, (err, decodedToken) => {
+                    if (err) {
+                        return false;
+                    }
+                    const user = decodedToken;
+                    userId = user.userId;
+                    return;
+                });
+            }
             const upvote = yield entities_1.CommentUpvote.findOne({
                 where: { commentId: userComment.id, creatorId: userId },
             });
@@ -71,7 +87,18 @@ let UserCommentResolver = class UserCommentResolver {
     }
     voteStatus(userComment, { req }) {
         return __awaiter(this, void 0, void 0, function* () {
-            const userId = req.session.userId;
+            let userId;
+            if (req.headers.authorization) {
+                const token = req.headers.authorization.split(`Bearer `)[1];
+                jsonwebtoken_1.default.verify(token, constants_1.default.JWT_SECRET, (err, decodedToken) => {
+                    if (err) {
+                        return false;
+                    }
+                    const user = decodedToken;
+                    userId = user.userId;
+                    return;
+                });
+            }
             const upvote = yield entities_1.CommentUpvote.findOne({
                 where: { commentId: userComment.id, creatorId: userId },
             });
@@ -83,13 +110,25 @@ let UserCommentResolver = class UserCommentResolver {
     }
     isOwner(userComment, { req }) {
         return __awaiter(this, void 0, void 0, function* () {
+            let userId;
+            if (req.headers.authorization) {
+                const token = req.headers.authorization.split(`Bearer `)[1];
+                jsonwebtoken_1.default.verify(token, constants_1.default.JWT_SECRET, (err, decodedToken) => {
+                    if (err) {
+                        return false;
+                    }
+                    const user = decodedToken;
+                    userId = user.userId;
+                    return;
+                });
+            }
             const connection = typeorm_1.getConnection();
             const commentRepository = connection.getRepository(entities_1.UserComment);
             const comment = yield commentRepository.findOne({
                 relations: ["creator"],
                 where: { id: userComment.id },
             });
-            if ((comment === null || comment === void 0 ? void 0 : comment.creator.id) === req.session.userId) {
+            if ((comment === null || comment === void 0 ? void 0 : comment.creator.id) === userId) {
                 return true;
             }
             else {
@@ -99,7 +138,19 @@ let UserCommentResolver = class UserCommentResolver {
     }
     voteComment(commentId, value, { req }) {
         return __awaiter(this, void 0, void 0, function* () {
-            if (!req.session.userId) {
+            let userId;
+            if (req.headers.authorization) {
+                const token = req.headers.authorization.split(`Bearer `)[1];
+                jsonwebtoken_1.default.verify(token, constants_1.default.JWT_SECRET, (err, decodedToken) => {
+                    if (err) {
+                        return false;
+                    }
+                    const user = decodedToken;
+                    userId = user.userId;
+                    return;
+                });
+            }
+            if (!userId) {
                 return {
                     errors: [
                         {
@@ -109,7 +160,6 @@ let UserCommentResolver = class UserCommentResolver {
                     ],
                 };
             }
-            const userId = req.session.userId;
             const user = yield entities_1.User.findOne({ id: userId });
             const comment = yield entities_1.UserComment.findOne({ id: commentId });
             if (!comment) {
@@ -202,7 +252,19 @@ let UserCommentResolver = class UserCommentResolver {
     }
     createComment(content, postId, { req }) {
         return __awaiter(this, void 0, void 0, function* () {
-            if (!req.session.userId) {
+            let userId;
+            if (req.headers.authorization) {
+                const token = req.headers.authorization.split(`Bearer `)[1];
+                jsonwebtoken_1.default.verify(token, constants_1.default.JWT_SECRET, (err, decodedToken) => {
+                    if (err) {
+                        return false;
+                    }
+                    const user = decodedToken;
+                    userId = user.userId;
+                    return;
+                });
+            }
+            if (!userId) {
                 return {
                     errors: [
                         {
@@ -213,7 +275,7 @@ let UserCommentResolver = class UserCommentResolver {
                 };
             }
             const user = yield entities_1.User.findOne({
-                where: { id: req.session.userId },
+                where: { id: userId },
             });
             if (!user) {
                 return {
@@ -265,7 +327,19 @@ let UserCommentResolver = class UserCommentResolver {
     }
     deleteAllComments({ req }) {
         return __awaiter(this, void 0, void 0, function* () {
-            if (!req.session.userId) {
+            let userId;
+            if (req.headers.authorization) {
+                const token = req.headers.authorization.split(`Bearer `)[1];
+                jsonwebtoken_1.default.verify(token, constants_1.default.JWT_SECRET, (err, decodedToken) => {
+                    if (err) {
+                        return false;
+                    }
+                    const user = decodedToken;
+                    userId = user.userId;
+                    return;
+                });
+            }
+            if (!userId) {
                 return false;
             }
             yield entities_1.UserComment.delete({});
@@ -274,7 +348,19 @@ let UserCommentResolver = class UserCommentResolver {
     }
     deleteComment(commentId, { req }) {
         return __awaiter(this, void 0, void 0, function* () {
-            if (!req.session.userId) {
+            let userId;
+            if (req.headers.authorization) {
+                const token = req.headers.authorization.split(`Bearer `)[1];
+                jsonwebtoken_1.default.verify(token, constants_1.default.JWT_SECRET, (err, decodedToken) => {
+                    if (err) {
+                        return false;
+                    }
+                    const user = decodedToken;
+                    userId = user.userId;
+                    return;
+                });
+            }
+            if (!userId) {
                 return false;
             }
             const connection = typeorm_1.getConnection();
@@ -287,7 +373,7 @@ let UserCommentResolver = class UserCommentResolver {
                 console.log("commentId error");
                 return false;
             }
-            if (comment.creator.id !== req.session.userId) {
+            if (comment.creator.id !== userId) {
                 console.log(`User not authorized`);
                 return false;
             }

@@ -28,6 +28,7 @@ exports.UserRegisterInput = exports.FieldError = void 0;
 const constants_1 = __importDefault(require("../constants"));
 const type_graphql_1 = require("type-graphql");
 const argon2_1 = __importDefault(require("argon2"));
+const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const validateUserInput_1 = require("../utils/validateUserInput");
 const uuid_1 = require("uuid");
 const sendMail_1 = require("../utils/sendMail");
@@ -65,19 +66,6 @@ UserRegisterInput = __decorate([
     type_graphql_1.InputType()
 ], UserRegisterInput);
 exports.UserRegisterInput = UserRegisterInput;
-let UserLoginInput = class UserLoginInput {
-};
-__decorate([
-    type_graphql_1.Field(),
-    __metadata("design:type", String)
-], UserLoginInput.prototype, "usernameOrEmail", void 0);
-__decorate([
-    type_graphql_1.Field(),
-    __metadata("design:type", String)
-], UserLoginInput.prototype, "password", void 0);
-UserLoginInput = __decorate([
-    type_graphql_1.InputType()
-], UserLoginInput);
 let UserResponse = class UserResponse {
 };
 __decorate([
@@ -88,31 +76,36 @@ __decorate([
     type_graphql_1.Field(() => entities_1.User, { nullable: true }),
     __metadata("design:type", entities_1.User)
 ], UserResponse.prototype, "user", void 0);
+__decorate([
+    type_graphql_1.Field(() => String, { nullable: true }),
+    __metadata("design:type", String)
+], UserResponse.prototype, "token", void 0);
 UserResponse = __decorate([
     type_graphql_1.ObjectType()
 ], UserResponse);
 let UserResolver = class UserResolver {
-    hello() {
-        return `Hello, its me`;
-    }
     users() {
         return __awaiter(this, void 0, void 0, function* () {
             const users = yield entities_1.User.find({});
             return users;
         });
     }
-    register({ req }, userInput) {
+    register(username, email, password) {
         return __awaiter(this, void 0, void 0, function* () {
-            const errors = validateUserInput_1.validateUserRegisterInput(userInput);
+            const errors = validateUserInput_1.validateUserRegisterInput({
+                username,
+                email,
+                password,
+            });
             if (errors.length > 0) {
                 return {
                     errors,
                 };
             }
-            const hashedPassword = yield argon2_1.default.hash(userInput.password);
+            const hashedPassword = yield argon2_1.default.hash(password);
             const user = entities_1.User.create({
-                username: userInput.username,
-                email: userInput.email,
+                username: username,
+                email: email,
                 password: hashedPassword,
             });
             try {
@@ -142,17 +135,21 @@ let UserResolver = class UserResolver {
                     };
                 }
             }
-            req.session.userId = user.id;
+            const userId = user.id;
+            const token = jsonwebtoken_1.default.sign({ userId }, constants_1.default.JWT_SECRET, {
+                expiresIn: 60 * 60 * 4,
+            });
             return {
                 user,
+                token,
             };
         });
     }
-    login({ req }, userInput) {
+    login(usernameOrEmail, password) {
         return __awaiter(this, void 0, void 0, function* () {
-            const user = yield entities_1.User.findOne(userInput.usernameOrEmail.includes("@")
-                ? { where: { email: userInput.usernameOrEmail } }
-                : { where: { username: userInput.usernameOrEmail } });
+            const user = yield entities_1.User.findOne(usernameOrEmail.includes("@")
+                ? { where: { email: usernameOrEmail } }
+                : { where: { username: usernameOrEmail } });
             if (!user) {
                 return {
                     errors: [
@@ -163,7 +160,7 @@ let UserResolver = class UserResolver {
                     ],
                 };
             }
-            const verifyPassword = yield argon2_1.default.verify(user.password, userInput.password);
+            const verifyPassword = yield argon2_1.default.verify(user.password, password);
             if (!verifyPassword) {
                 return {
                     errors: [
@@ -174,22 +171,18 @@ let UserResolver = class UserResolver {
                     ],
                 };
             }
-            req.session.userId = user.id;
+            const userId = user.id;
+            const token = jsonwebtoken_1.default.sign({ userId }, constants_1.default.JWT_SECRET, {
+                expiresIn: 60 * 60 * 4,
+            });
             return {
                 user,
+                token,
             };
         });
     }
-    logout({ req, res }) {
-        return new Promise((resolve) => req.session.destroy((err) => {
-            res.clearCookie(constants_1.default.USERID_COOKIE);
-            if (err) {
-                console.log(err);
-                resolve(false);
-                return;
-            }
-            return resolve(true);
-        }));
+    logout() {
+        return true;
     }
     forgotPassword(email, { redis }) {
         return __awaiter(this, void 0, void 0, function* () {
@@ -249,11 +242,22 @@ let UserResolver = class UserResolver {
     }
     me({ req }) {
         return __awaiter(this, void 0, void 0, function* () {
-            if (!req.session.userId) {
+            let user;
+            if (req.headers.authorization) {
+                const token = req.headers.authorization.split(`Bearer `)[1];
+                jsonwebtoken_1.default.verify(token, constants_1.default.JWT_SECRET, (err, decodedToken) => {
+                    if (err) {
+                        return null;
+                    }
+                    user = decodedToken;
+                    return;
+                });
+            }
+            if (!user) {
                 return null;
             }
-            const user = yield entities_1.User.findOne(req.session.userId);
-            return user;
+            const currentUser = yield entities_1.User.findOne({ id: user.userId });
+            return currentUser;
         });
     }
     deleteUsers({ req }) {
@@ -267,25 +271,31 @@ let UserResolver = class UserResolver {
     }
     meWithCommunities({ req }) {
         return __awaiter(this, void 0, void 0, function* () {
-            if (!req.session.userId) {
+            let userId;
+            if (req.headers.authorization) {
+                const token = req.headers.authorization.split(`Bearer `)[1];
+                jsonwebtoken_1.default.verify(token, constants_1.default.JWT_SECRET, (err, decodedToken) => {
+                    if (err) {
+                        return false;
+                    }
+                    const user = decodedToken;
+                    userId = user.userId;
+                    return;
+                });
+            }
+            if (!userId) {
                 return null;
             }
             const connection = typeorm_1.getConnection();
             const userRepository = connection.getRepository(entities_1.User);
             const user = yield userRepository.findOne({
-                where: { id: req.session.userId },
+                where: { id: userId },
                 relations: ["memberCommunities"],
             });
             return user;
         });
     }
 };
-__decorate([
-    type_graphql_1.Query(() => String),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", []),
-    __metadata("design:returntype", void 0)
-], UserResolver.prototype, "hello", null);
 __decorate([
     type_graphql_1.Query(() => [entities_1.User]),
     __metadata("design:type", Function),
@@ -294,26 +304,26 @@ __decorate([
 ], UserResolver.prototype, "users", null);
 __decorate([
     type_graphql_1.Mutation(() => UserResponse),
-    __param(0, type_graphql_1.Ctx()),
-    __param(1, type_graphql_1.Arg("userInput")),
+    __param(0, type_graphql_1.Arg("username")),
+    __param(1, type_graphql_1.Arg("email")),
+    __param(2, type_graphql_1.Arg("password")),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object, UserRegisterInput]),
+    __metadata("design:paramtypes", [String, String, String]),
     __metadata("design:returntype", Promise)
 ], UserResolver.prototype, "register", null);
 __decorate([
     type_graphql_1.Mutation(() => UserResponse),
-    __param(0, type_graphql_1.Ctx()),
-    __param(1, type_graphql_1.Arg("userInput")),
+    __param(0, type_graphql_1.Arg("usernameOrEmail")),
+    __param(1, type_graphql_1.Arg("password")),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object, UserLoginInput]),
+    __metadata("design:paramtypes", [String, String]),
     __metadata("design:returntype", Promise)
 ], UserResolver.prototype, "login", null);
 __decorate([
     type_graphql_1.Mutation(() => Boolean),
-    __param(0, type_graphql_1.Ctx()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object]),
-    __metadata("design:returntype", Promise)
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", Boolean)
 ], UserResolver.prototype, "logout", null);
 __decorate([
     type_graphql_1.Mutation(() => Boolean),

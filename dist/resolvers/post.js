@@ -20,12 +20,17 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.PaginatedPosts = exports.UpvoteResponse = exports.PostResponse = void 0;
 const type_graphql_1 = require("type-graphql");
+const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const user_1 = require("./user");
 const entities_1 = require("../entities");
 const typeorm_1 = require("typeorm");
+const constants_1 = __importDefault(require("../constants"));
 const allRelations = ["community", "comments", "upvotes"];
 let PostResponse = class PostResponse {
 };
@@ -74,11 +79,20 @@ PaginatedPosts = __decorate([
 ], PaginatedPosts);
 exports.PaginatedPosts = PaginatedPosts;
 let PostResolver = class PostResolver {
-    contentSnippet(post) {
-        return post.content.slice(0, 50);
-    }
     isOwner(post, { req }) {
-        if (req.session.userId === post.creatorId) {
+        let userId;
+        if (req.headers.authorization) {
+            const token = req.headers.authorization.split(`Bearer `)[1];
+            jsonwebtoken_1.default.verify(token, constants_1.default.JWT_SECRET, (err, decodedToken) => {
+                if (err) {
+                    return false;
+                }
+                const user = decodedToken;
+                userId = user.userId;
+                return;
+            });
+        }
+        if (userId === post.creatorId) {
             return true;
         }
         else {
@@ -93,8 +107,19 @@ let PostResolver = class PostResolver {
     }
     joinStatus(post, { communityLoader, req }) {
         return __awaiter(this, void 0, void 0, function* () {
+            let userId;
+            if (req.headers.authorization) {
+                const token = req.headers.authorization.split(`Bearer `)[1];
+                jsonwebtoken_1.default.verify(token, constants_1.default.JWT_SECRET, (err, decodedToken) => {
+                    if (err) {
+                        return false;
+                    }
+                    const user = decodedToken;
+                    userId = user.userId;
+                    return;
+                });
+            }
             const community = yield communityLoader.load(post.communityId);
-            const userId = req.session.userId;
             const found = community.memberIds.find((commId) => commId === userId);
             if (found) {
                 return true;
@@ -106,7 +131,22 @@ let PostResolver = class PostResolver {
     }
     hasVoted(post, { req, upvoteLoader }) {
         return __awaiter(this, void 0, void 0, function* () {
-            const userId = req.session.userId;
+            let userId;
+            if (req.headers.authorization) {
+                let user;
+                const token = req.headers.authorization.split("Bearer ")[1];
+                jsonwebtoken_1.default.verify(token, constants_1.default.JWT_SECRET, (err, decodedToken) => {
+                    if (err) {
+                        return null;
+                    }
+                    user = decodedToken;
+                    userId = user.userId;
+                    return;
+                });
+            }
+            if (!userId) {
+                return null;
+            }
             const upvote = yield upvoteLoader.load({
                 postId: post.id,
                 creatorId: userId,
@@ -116,7 +156,20 @@ let PostResolver = class PostResolver {
     }
     vote({ req }, postId, value) {
         return __awaiter(this, void 0, void 0, function* () {
-            if (!req.session.userId) {
+            let userId;
+            if (req.headers.authorization) {
+                let user;
+                const token = req.headers.authorization.split("Bearer ")[1];
+                jsonwebtoken_1.default.verify(token, constants_1.default.JWT_SECRET, (err, decodedToken) => {
+                    if (err) {
+                        return null;
+                    }
+                    user = decodedToken;
+                    userId = user.userId;
+                    return;
+                });
+            }
+            if (!userId) {
                 return {
                     errors: [
                         {
@@ -127,10 +180,10 @@ let PostResolver = class PostResolver {
                 };
             }
             const checkUpvote = yield entities_1.Upvote.findOne({
-                where: { creatorId: req.session.userId, postId: postId },
+                where: { creatorId: userId, postId: postId },
             });
             const post = yield entities_1.Post.findOne(postId);
-            const user = yield entities_1.User.findOne(req.session.userId);
+            const user = yield entities_1.User.findOne(userId);
             if (!user) {
                 return {
                     errors: [
@@ -201,15 +254,6 @@ let PostResolver = class PostResolver {
             };
         });
     }
-    deleteAllUpvote({ req }) {
-        return __awaiter(this, void 0, void 0, function* () {
-            if (!req.session.userId) {
-                return false;
-            }
-            yield entities_1.Upvote.delete({});
-            return true;
-        });
-    }
     posts(limit, cursor) {
         return __awaiter(this, void 0, void 0, function* () {
             const connection = typeorm_1.getConnection();
@@ -235,6 +279,28 @@ let PostResolver = class PostResolver {
     myCommunitiesPosts({ req }, limit, cursor) {
         return __awaiter(this, void 0, void 0, function* () {
             const connection = typeorm_1.getConnection();
+            let userId;
+            if (req.headers.authorization) {
+                const token = req.headers.authorization.split(`Bearer `)[1];
+                let user;
+                jsonwebtoken_1.default.verify(token, constants_1.default.JWT_SECRET, (err, decodedToken) => {
+                    if (err) {
+                        return {
+                            post: [],
+                            hasMore: false,
+                        };
+                    }
+                    user = decodedToken;
+                    return;
+                });
+                if (!user) {
+                    return {
+                        posts: [],
+                        hasMore: false,
+                    };
+                }
+                userId = user.userId;
+            }
             const userRepository = connection.getRepository(entities_1.User);
             const realLimit = Math.min(20, limit);
             const realLimitPlusOne = Math.min(20, limit) + 1;
@@ -243,7 +309,7 @@ let PostResolver = class PostResolver {
                 replacements.push(new Date(parseInt(cursor)));
             }
             const user = yield userRepository.findOne({
-                where: { id: req.session.userId },
+                where: { id: userId },
                 relations: ["memberCommunities"],
             });
             if (!user) {
@@ -314,7 +380,20 @@ let PostResolver = class PostResolver {
     }
     createPost(title, content, communityId, { req }) {
         return __awaiter(this, void 0, void 0, function* () {
-            if (!req.session.userId) {
+            let userId;
+            if (req.headers.authorization) {
+                let user;
+                const token = req.headers.authorization.split("Bearer ")[1];
+                jsonwebtoken_1.default.verify(token, constants_1.default.JWT_SECRET, (err, decodedToken) => {
+                    if (err) {
+                        return null;
+                    }
+                    user = decodedToken;
+                    userId = user.userId;
+                    return;
+                });
+            }
+            if (!userId) {
                 return {
                     errors: [
                         {
@@ -350,7 +429,7 @@ let PostResolver = class PostResolver {
             const connection = typeorm_1.getConnection();
             const userRepository = connection.getRepository(entities_1.User);
             const user = yield userRepository.findOne({
-                where: { id: req.session.userId },
+                where: { id: userId },
                 relations: ["memberCommunities"],
             });
             if (!user) {
@@ -394,7 +473,19 @@ let PostResolver = class PostResolver {
     }
     updatePost(id, title, content, { req }) {
         return __awaiter(this, void 0, void 0, function* () {
-            if (!req.session.userId) {
+            let userId;
+            if (req.headers.authorization) {
+                const token = req.headers.authorization.split(`Bearer `)[1];
+                jsonwebtoken_1.default.verify(token, constants_1.default.JWT_SECRET, (err, decodedToken) => {
+                    if (err) {
+                        return false;
+                    }
+                    const user = decodedToken;
+                    userId = user.userId;
+                    return;
+                });
+            }
+            if (!userId) {
                 return {
                     errors: [
                         {
@@ -415,7 +506,7 @@ let PostResolver = class PostResolver {
                     ],
                 };
             }
-            if ((post === null || post === void 0 ? void 0 : post.creatorId) !== req.session.userId) {
+            if ((post === null || post === void 0 ? void 0 : post.creatorId) !== userId) {
                 return {
                     errors: [
                         {
@@ -444,7 +535,19 @@ let PostResolver = class PostResolver {
     }
     deletePost(id, { req }) {
         return __awaiter(this, void 0, void 0, function* () {
-            if (!req.session.userId) {
+            let userId;
+            if (req.headers.authorization) {
+                const token = req.headers.authorization.split(`Bearer `)[1];
+                jsonwebtoken_1.default.verify(token, constants_1.default.JWT_SECRET, (err, decodedToken) => {
+                    if (err) {
+                        return false;
+                    }
+                    const user = decodedToken;
+                    userId = user.userId;
+                    return;
+                });
+            }
+            if (!userId) {
                 return false;
             }
             const post = yield entities_1.Post.findOne(id);
@@ -462,7 +565,19 @@ let PostResolver = class PostResolver {
     }
     deletePosts({ req }) {
         return __awaiter(this, void 0, void 0, function* () {
-            if (!req.session.userId) {
+            let userId;
+            if (req.headers.authorization) {
+                const token = req.headers.authorization.split(`Bearer `)[1];
+                jsonwebtoken_1.default.verify(token, constants_1.default.JWT_SECRET, (err, decodedToken) => {
+                    if (err) {
+                        return false;
+                    }
+                    const user = decodedToken;
+                    userId = user.userId;
+                    return;
+                });
+            }
+            if (!userId) {
                 return false;
             }
             yield entities_1.Post.delete({});
@@ -472,12 +587,6 @@ let PostResolver = class PostResolver {
 };
 __decorate([
     type_graphql_1.FieldResolver(() => String),
-    __param(0, type_graphql_1.Root()),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", [entities_1.Post]),
-    __metadata("design:returntype", void 0)
-], PostResolver.prototype, "contentSnippet", null);
-__decorate([
     type_graphql_1.FieldResolver(() => Boolean),
     __param(0, type_graphql_1.Root()), __param(1, type_graphql_1.Ctx()),
     __metadata("design:type", Function),
@@ -524,13 +633,6 @@ __decorate([
     __metadata("design:paramtypes", [Object, Number, Number]),
     __metadata("design:returntype", Promise)
 ], PostResolver.prototype, "vote", null);
-__decorate([
-    type_graphql_1.Mutation(() => Boolean),
-    __param(0, type_graphql_1.Ctx()),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object]),
-    __metadata("design:returntype", Promise)
-], PostResolver.prototype, "deleteAllUpvote", null);
 __decorate([
     type_graphql_1.Query(() => PaginatedPosts),
     __param(0, type_graphql_1.Arg("limit", () => type_graphql_1.Int)),

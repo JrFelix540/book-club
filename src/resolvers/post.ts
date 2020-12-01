@@ -11,9 +11,11 @@ import {
   Resolver,
   Root,
 } from "type-graphql";
-import { FieldError } from "./user";
+import jwt from "jsonwebtoken";
+import { FieldError, UserDecoded } from "./user";
 import { Upvote, User, Community, Post } from "../entities";
 import { getConnection, Repository } from "typeorm";
+import constants from "../constants";
 
 const allRelations = ["community", "comments", "upvotes"];
 
@@ -49,13 +51,22 @@ export class PaginatedPosts {
 @Resolver(Post)
 export default class PostResolver {
   @FieldResolver(() => String)
-  contentSnippet(@Root() post: Post) {
-    return post.content.slice(0, 50);
-  }
-
   @FieldResolver(() => Boolean)
   isOwner(@Root() post: Post, @Ctx() { req }: MyContext) {
-    if (req.session.userId === post.creatorId) {
+    let userId;
+    if (req.headers.authorization) {
+      const token = req.headers.authorization.split(`Bearer `)[1];
+      jwt.verify(token, constants.JWT_SECRET, (err, decodedToken) => {
+        if (err) {
+          return false;
+        }
+        const user: any = decodedToken;
+        userId = user.userId;
+        return;
+      });
+    }
+
+    if (userId === post.creatorId) {
       return true;
     } else {
       return false;
@@ -80,8 +91,20 @@ export default class PostResolver {
     @Root() post: Post,
     @Ctx() { communityLoader, req }: MyContext,
   ) {
+    let userId: number;
+    if (req.headers.authorization) {
+      const token = req.headers.authorization.split(`Bearer `)[1];
+      jwt.verify(token, constants.JWT_SECRET, (err, decodedToken) => {
+        if (err) {
+          return false;
+        }
+        const user: any = decodedToken;
+        userId = user.userId;
+        return;
+      });
+    }
+
     const community = await communityLoader.load(post.communityId);
-    const userId = req.session.userId;
 
     const found = community.memberIds.find(
       (commId: number) => commId === userId,
@@ -99,7 +122,23 @@ export default class PostResolver {
     @Root() post: Post,
     @Ctx() { req, upvoteLoader }: MyContext,
   ) {
-    const userId = req.session.userId;
+    let userId;
+    if (req.headers.authorization) {
+      let user: any;
+      const token = req.headers.authorization.split("Bearer ")[1];
+      jwt.verify(token, constants.JWT_SECRET, (err, decodedToken) => {
+        if (err) {
+          return null;
+        }
+        user = decodedToken;
+        userId = user.userId;
+        return;
+      });
+    }
+
+    if (!userId) {
+      return null;
+    }
     const upvote = await upvoteLoader.load({
       postId: post.id,
       creatorId: userId,
@@ -114,7 +153,20 @@ export default class PostResolver {
     @Arg("value", () => Int) value: number,
   ): Promise<UpvoteResponse> {
     // Check if the person has voted on the post
-    if (!req.session.userId) {
+    let userId;
+    if (req.headers.authorization) {
+      let user: any;
+      const token = req.headers.authorization.split("Bearer ")[1];
+      jwt.verify(token, constants.JWT_SECRET, (err, decodedToken) => {
+        if (err) {
+          return null;
+        }
+        user = decodedToken;
+        userId = user.userId;
+        return;
+      });
+    }
+    if (!userId) {
       return {
         errors: [
           {
@@ -125,11 +177,11 @@ export default class PostResolver {
       };
     }
     const checkUpvote = await Upvote.findOne({
-      where: { creatorId: req.session.userId, postId: postId },
+      where: { creatorId: userId, postId: postId },
     });
 
     const post = await Post.findOne(postId);
-    const user = await User.findOne(req.session.userId);
+    const user = await User.findOne(userId);
 
     if (!user) {
       return {
@@ -206,15 +258,6 @@ export default class PostResolver {
     };
   }
 
-  @Mutation(() => Boolean)
-  async deleteAllUpvote(@Ctx() { req }: MyContext): Promise<boolean> {
-    if (!req.session.userId) {
-      return false;
-    }
-    await Upvote.delete({});
-    return true;
-  }
-
   @Query(() => PaginatedPosts)
   async posts(
     @Arg("limit", () => Int) limit: number,
@@ -257,6 +300,31 @@ export default class PostResolver {
     cursor: string | null,
   ): Promise<PaginatedPosts> {
     const connection = getConnection();
+    let userId;
+    if (req.headers.authorization) {
+      const token = req.headers.authorization.split(`Bearer `)[1];
+      let user: UserDecoded | null | any;
+      jwt.verify(token, constants.JWT_SECRET, (err, decodedToken) => {
+        if (err) {
+          return {
+            post: [],
+            hasMore: false,
+          };
+        }
+
+        user = decodedToken;
+        return;
+      });
+
+      if (!user) {
+        return {
+          posts: [],
+          hasMore: false,
+        };
+      }
+      userId = user.userId;
+    }
+
     const userRepository: Repository<User> = connection.getRepository(
       User,
     );
@@ -267,7 +335,7 @@ export default class PostResolver {
       replacements.push(new Date(parseInt(cursor)));
     }
     const user = await userRepository.findOne({
-      where: { id: req.session.userId },
+      where: { id: userId },
       relations: ["memberCommunities"],
     });
     if (!user) {
@@ -360,7 +428,20 @@ export default class PostResolver {
     @Arg("communityId", () => Int) communityId: number,
     @Ctx() { req }: MyContext,
   ): Promise<PostResponse> {
-    if (!req.session.userId) {
+    let userId;
+    if (req.headers.authorization) {
+      let user: any;
+      const token = req.headers.authorization.split("Bearer ")[1];
+      jwt.verify(token, constants.JWT_SECRET, (err, decodedToken) => {
+        if (err) {
+          return null;
+        }
+        user = decodedToken;
+        userId = user.userId;
+        return;
+      });
+    }
+    if (!userId) {
       return {
         errors: [
           {
@@ -401,7 +482,7 @@ export default class PostResolver {
     );
 
     const user = await userRepository.findOne({
-      where: { id: req.session.userId },
+      where: { id: userId },
       relations: ["memberCommunities"],
     });
 
@@ -457,7 +538,19 @@ export default class PostResolver {
     @Arg("content", () => String, { nullable: true }) content: string,
     @Ctx() { req }: MyContext,
   ): Promise<PostResponse> {
-    if (!req.session.userId) {
+    let userId;
+    if (req.headers.authorization) {
+      const token = req.headers.authorization.split(`Bearer `)[1];
+      jwt.verify(token, constants.JWT_SECRET, (err, decodedToken) => {
+        if (err) {
+          return false;
+        }
+        const user: any = decodedToken;
+        userId = user.userId;
+        return;
+      });
+    }
+    if (!userId) {
       return {
         errors: [
           {
@@ -478,7 +571,7 @@ export default class PostResolver {
         ],
       };
     }
-    if (post?.creatorId !== req.session.userId) {
+    if (post?.creatorId !== userId) {
       return {
         errors: [
           {
@@ -513,7 +606,19 @@ export default class PostResolver {
     @Arg("id", () => Int) id: number,
     @Ctx() { req }: MyContext,
   ): Promise<Boolean> {
-    if (!req.session.userId) {
+    let userId;
+    if (req.headers.authorization) {
+      const token = req.headers.authorization.split(`Bearer `)[1];
+      jwt.verify(token, constants.JWT_SECRET, (err, decodedToken) => {
+        if (err) {
+          return false;
+        }
+        const user: any = decodedToken;
+        userId = user.userId;
+        return;
+      });
+    }
+    if (!userId) {
       return false;
     }
     const post = await Post.findOne(id);
@@ -533,7 +638,19 @@ export default class PostResolver {
 
   @Mutation(() => Boolean)
   async deletePosts(@Ctx() { req }: MyContext): Promise<Boolean> {
-    if (!req.session.userId) {
+    let userId;
+    if (req.headers.authorization) {
+      const token = req.headers.authorization.split(`Bearer `)[1];
+      jwt.verify(token, constants.JWT_SECRET, (err, decodedToken) => {
+        if (err) {
+          return false;
+        }
+        const user: any = decodedToken;
+        userId = user.userId;
+        return;
+      });
+    }
+    if (!userId) {
       return false;
     }
     await Post.delete({});

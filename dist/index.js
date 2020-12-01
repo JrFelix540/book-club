@@ -17,10 +17,7 @@ const express_1 = __importDefault(require("express"));
 const apollo_server_express_1 = require("apollo-server-express");
 const type_graphql_1 = require("type-graphql");
 const ioredis_1 = __importDefault(require("ioredis"));
-const express_session_1 = __importDefault(require("express-session"));
-const connect_redis_1 = __importDefault(require("connect-redis"));
 const cors_1 = __importDefault(require("cors"));
-const constants_1 = __importDefault(require("./constants"));
 const typeorm_1 = require("typeorm");
 const path_1 = __importDefault(require("path"));
 const entities_1 = require("./entities");
@@ -55,23 +52,9 @@ const main = () => __awaiter(void 0, void 0, void 0, function* () {
         },
     });
     const app = express_1.default();
-    const redis = new ioredis_1.default(config_1.default.redisUrl);
-    const RedisStore = connect_redis_1.default(express_session_1.default);
-    app.use(express_session_1.default({
-        name: constants_1.default.USERID_COOKIE,
-        store: new RedisStore({
-            client: redis,
-            disableTouch: true,
-        }),
-        cookie: {
-            maxAge: 1000 * 60 * 60 * 24,
-            sameSite: "lax",
-            secure: false,
-        },
-        saveUninitialized: false,
-        secret: "route540",
-        resave: false,
-    }));
+    const redis = new ioredis_1.default(config_1.default.redisUrl, {
+        password: config_1.default.redisPassword,
+    });
     app.use(cors_1.default({
         origin: config_1.default.corsOriginUrl,
         credentials: true,
