@@ -13,8 +13,6 @@ import {
 import argon2 from "argon2";
 import jwt from "jsonwebtoken";
 import { validateUserRegisterInput } from "../utils/validateUserInput";
-import { v4 } from "uuid";
-import { sendMail } from "../utils/sendMail";
 import { getConnection, Repository } from "typeorm";
 import { User } from "../entities";
 
@@ -65,7 +63,7 @@ export default class UserResolver {
   async register(
     @Arg("username") username: string,
     @Arg("email") email: string,
-    @Arg("password") password: string,
+    @Arg("password") password: string
   ): Promise<UserResponse> {
     const errors = validateUserRegisterInput({
       username,
@@ -131,12 +129,12 @@ export default class UserResolver {
   @Mutation(() => UserResponse)
   async login(
     @Arg("usernameOrEmail") usernameOrEmail: string,
-    @Arg("password") password: string,
+    @Arg("password") password: string
   ): Promise<UserResponse> {
     const user = await User.findOne(
       usernameOrEmail.includes("@")
         ? { where: { email: usernameOrEmail } }
-        : { where: { username: usernameOrEmail } },
+        : { where: { username: usernameOrEmail } }
     );
 
     if (!user) {
@@ -150,10 +148,7 @@ export default class UserResolver {
       };
     }
 
-    const verifyPassword = await argon2.verify(
-      user.password,
-      password,
-    );
+    const verifyPassword = await argon2.verify(user.password, password);
 
     if (!verifyPassword) {
       return {
@@ -182,90 +177,88 @@ export default class UserResolver {
     return true;
   }
 
-  @Mutation(() => Boolean)
-  async forgotPassword(
-    @Arg("email") email: string,
-    @Ctx() { redis }: MyContext,
-  ) {
-    const user = await User.findOne({ where: { email } });
+  // @Mutation(() => Boolean)
+  // async forgotPassword(
+  //   @Arg("email") email: string,
+  //   @Ctx() { redis }: MyContext,
+  // ) {
+  //   const user = await User.findOne({ where: { email } });
 
-    if (!user) {
-      return true;
-    }
+  //   if (!user) {
+  //     return true;
+  //   }
 
-    const token = v4();
+  //   const token = v4();
 
-    redis.set(
-      constants.FORGOT_PASSWORD + token,
-      user.id,
-      "ex",
-      1000 * 60 * 60 * 4,
-    );
+  //   redis.set(
+  //     constants.FORGOT_PASSWORD + token,
+  //     user.id,
+  //     "ex",
+  //     1000 * 60 * 60 * 4,
+  //   );
 
-    sendMail(
-      user.email,
-      `<a href="http://localhost:3000/reset-password/${token}">Reset Password</a>`,
-    );
+  //   sendMail(
+  //     user.email,
+  //     `<a href="http://localhost:3000/reset-password/${token}">Reset Password</a>`,
+  //   );
 
-    return true;
-  }
+  //   return true;
+  // }
 
-  @Mutation(() => UserResponse)
-  async resetPassword(
-    @Arg("token") token: string,
-    @Arg("password") password: string,
-    @Ctx() { redis }: MyContext,
-  ): Promise<UserResponse> {
-    const key = constants.FORGOT_PASSWORD + token;
-    const userId = await redis.get(key);
-    if (!userId) {
-      return {
-        errors: [
-          {
-            field: "password",
-            message: "Token has expired",
-          },
-        ],
-      };
-    }
+  // @Mutation(() => UserResponse)
+  // async resetPassword(
+  //   @Arg("token") token: string,
+  //   @Arg("password") password: string,
+  //   @Ctx() { redis }: MyContext,
+  // ): Promise<UserResponse> {
+  //   const key = constants.FORGOT_PASSWORD + token;
+  //   const userId = await redis.get(key);
+  //   if (!userId) {
+  //     return {
+  //       errors: [
+  //         {
+  //           field: "password",
+  //           message: "Token has expired",
+  //         },
+  //       ],
+  //     };
+  //   }
 
-    if (password.length < 4) {
-      return {
-        errors: [
-          {
-            field: "password",
-            message: "Choose a longer password",
-          },
-        ],
-      };
-    }
+  //   if (password.length < 4) {
+  //     return {
+  //       errors: [
+  //         {
+  //           field: "password",
+  //           message: "Choose a longer password",
+  //         },
+  //       ],
+  //     };
+  //   }
 
-    const user = await User.findOne(parseInt(userId));
-    if (!user) {
-      return {
-        errors: [
-          {
-            field: "password",
-            message: "Token has expired",
-          },
-        ],
-      };
-    }
+  //   const user = await User.findOne(parseInt(userId));
+  //   if (!user) {
+  //     return {
+  //       errors: [
+  //         {
+  //           field: "password",
+  //           message: "Token has expired",
+  //         },
+  //       ],
+  //     };
+  //   }
 
-    const hashedPassword = await argon2.hash(password);
-    user.password = hashedPassword;
-    user.save();
+  //   const hashedPassword = await argon2.hash(password);
+  //   user.password = hashedPassword;
+  //   user.save();
 
-    await redis.del(key);
-    return {
-      user,
-    };
-  }
+  //   await redis.del(key);
+  //   return {
+  //     user,
+  //   };
+  // }
 
   @Query(() => User, { nullable: true })
-  async me(
-    @Ctx() { req }: MyContext,
-  ): Promise<User | null | undefined> {
+  async me(@Ctx() { req }: MyContext): Promise<User | null | undefined> {
     let user: any;
     if (req.headers.authorization) {
       const token = req.headers.authorization.split(`Bearer `)[1];
@@ -287,15 +280,6 @@ export default class UserResolver {
     return currentUser;
   }
 
-  @Mutation(() => Boolean)
-  async deleteUsers(@Ctx() { req }: MyContext): Promise<boolean> {
-    if (!req.session.userId) {
-      return false;
-    }
-    await User.delete({});
-    return true;
-  }
-
   @Query(() => User, { nullable: true })
   async meWithCommunities(@Ctx() { req }: MyContext) {
     let userId;
@@ -314,9 +298,7 @@ export default class UserResolver {
       return null;
     }
     const connection = getConnection();
-    const userRepository: Repository<User> = connection.getRepository(
-      User,
-    );
+    const userRepository: Repository<User> = connection.getRepository(User);
 
     const user = await userRepository.findOne({
       where: { id: userId },

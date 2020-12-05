@@ -1,6 +1,7 @@
 import { createCommunityLoader } from "./utils/createCommunityLoader";
 import { createUpvoteLoader } from "./utils/createUpvoteLoader";
 import { createUserLoader } from "./utils/createUserLoader";
+import { Request, Response } from "express";
 
 export type MyContext = {
   req: Request;

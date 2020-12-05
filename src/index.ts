@@ -2,11 +2,7 @@ import "reflect-metadata";
 import express from "express";
 import { ApolloServer } from "apollo-server-express";
 import { buildSchema } from "type-graphql";
-import Redis from "ioredis";
-import session from "express-session";
-import connectRedis from "connect-redis";
 import cors from "cors";
-import constants from "./constants";
 import { createConnection } from "typeorm";
 import path from "path";
 import {
@@ -59,35 +55,11 @@ const main = async () => {
   });
 
   const app = express();
-  const redis = new Redis(config.redisUrl, {
-    password: config.redisPassword,
-  });
-  // const RedisStore = connectRedis(session);
-  // app.set("trust proxy", 1);
-  // app.use(
-  //   session({
-  //     name: constants.USERID_COOKIE,
-  //     store: new RedisStore({
-  //       client: redis,
-  //       disableTouch: true,
-  //     }),
-  //     cookie: {
-  //       maxAge: 1000 * 60 * 60 * 24,
-  //       sameSite: "lax",
-  //       secure: constants.__prod__,
-  //       domain: constants.__prod__ ? ".vercel.app" : undefined,
-  //     },
-  //     saveUninitialized: false,
-  //     secret: "route540",
-  //     resave: false,
-  // }),
-  // );
-
   app.use(
     cors({
       origin: config.corsOriginUrl,
       credentials: true,
-    }),
+    })
   );
 
   const apolloServer = new ApolloServer({
@@ -103,7 +75,6 @@ const main = async () => {
     context: ({ req, res }) => ({
       req,
       res,
-      redis,
       userLoader: createUserLoader(),
       communityLoader: createCommunityLoader(),
       upvoteLoader: createUpvoteLoader(),
