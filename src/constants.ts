@@ -1,5 +1,3 @@
-import config from "./config";
-
 const constants = {
   JWT_SECRET: "qid",
   FORGOT_PASSWORD: `fgp`,
