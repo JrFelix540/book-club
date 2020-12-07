@@ -656,4 +656,9 @@ export default class PostResolver {
     await Post.delete({});
     return true;
   }
+
+  @Query(() => [Post])
+  async postWithIds(): Promise<Post[]> {
+    return await Post.find({});
+  }
 }
