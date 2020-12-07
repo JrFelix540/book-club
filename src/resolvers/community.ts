@@ -363,4 +363,8 @@ export default class CommunityResolver {
       ok: true,
     };
   }
+  @Query(() => [Community])
+  async communitiesWithIds(): Promise<Community[]> {
+    return Community.find({});
+  }
 }
