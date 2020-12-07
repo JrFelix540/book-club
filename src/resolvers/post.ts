@@ -365,8 +365,8 @@ export default class PostResolver {
     select p.*
     from post p
     where (p."communityId" in (${communityIds}))
-    ${cursor ? `and p."createdAt" < $2` : ``}
-    order by p.points DESC
+    ${cursor ? `and p."updatedAt" < $2` : ``}
+    order by p."updatedAt" DESC
     limit $1
 
     `,
