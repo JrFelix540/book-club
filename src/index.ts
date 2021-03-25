@@ -52,9 +52,9 @@ const main = async () => {
     cli: {
       migrationsDir: "migration",
     },
-    extra: {
-      ssl: config.development === "development" ? false : true,
-    },
+    // extra: {
+    //   ssl: config.development === "development" ? false : true,
+    // },
   });
 
   const app = express();
