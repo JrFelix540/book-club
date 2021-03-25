@@ -52,6 +52,9 @@ const main = async () => {
     cli: {
       migrationsDir: "migration",
     },
+    extra: {
+      ssl: config.development === "development" ? false : true,
+    },
   });
 
   const app = express();
@@ -59,7 +62,7 @@ const main = async () => {
     cors({
       origin: config.corsOriginUrl,
       credentials: true,
-    })
+    }),
   );
 
   const apolloServer = new ApolloServer({
