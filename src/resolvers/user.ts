@@ -13,8 +13,10 @@ import {
 import argon2 from "argon2";
 import jwt from "jsonwebtoken";
 import { validateUserRegisterInput } from "../utils/validateUserInput";
-import { getConnection, Repository } from "typeorm";
 import { User } from "../entities";
+import { AppDataSource } from "../database/database";
+
+const userRepository = AppDataSource.getRepository(User);
 
 @ObjectType()
 export class FieldError {
@@ -55,7 +57,7 @@ class UserResponse {
 export default class UserResolver {
   @Query(() => [User])
   async users(): Promise<User[]> {
-    const users = await User.find({});
+    const users = await userRepository.find({});
     return users;
   }
 
@@ -84,7 +86,7 @@ export default class UserResolver {
     });
 
     try {
-      await User.save(user);
+      await userRepository.save(user);
     } catch (err) {
       if (
         err.detail.includes("already exists") &&
@@ -131,7 +133,7 @@ export default class UserResolver {
     @Arg("usernameOrEmail") usernameOrEmail: string,
     @Arg("password") password: string
   ): Promise<UserResponse> {
-    const user = await User.findOne(
+    const user = await userRepository.findOne(
       usernameOrEmail.includes("@")
         ? { where: { email: usernameOrEmail } }
         : { where: { username: usernameOrEmail } }
@@ -275,7 +277,7 @@ export default class UserResolver {
       return null;
     }
 
-    const currentUser = await User.findOne({ id: user.userId });
+    const currentUser = await userRepository.findOneBy({ id: 1 });
 
     return currentUser;
   }
@@ -297,8 +299,6 @@ export default class UserResolver {
     if (!userId) {
       return null;
     }
-    const connection = getConnection();
-    const userRepository: Repository<User> = connection.getRepository(User);
 
     const user = await userRepository.findOne({
       where: { id: userId },

@@ -14,8 +14,10 @@ import {
 import jwt from "jsonwebtoken";
 import { FieldError, UserDecoded } from "./user";
 import { Upvote, User, Community, Post } from "../entities";
-import { getConnection, Repository } from "typeorm";
 import constants from "../constants";
+import { AppDataSource } from "../database/database";
+
+const userRepository = AppDataSource.getRepository(User);
 
 const allRelations = ["community", "comments", "upvotes"];
 
@@ -79,17 +81,14 @@ export default class PostResolver {
   }
 
   @FieldResolver(() => Community)
-  community(
-    @Root() post: Post,
-    @Ctx() { communityLoader }: MyContext,
-  ) {
+  community(@Root() post: Post, @Ctx() { communityLoader }: MyContext) {
     return communityLoader.load(post.communityId);
   }
 
   @FieldResolver(() => Boolean)
   async joinStatus(
     @Root() post: Post,
-    @Ctx() { communityLoader, req }: MyContext,
+    @Ctx() { communityLoader, req }: MyContext
   ) {
     let userId: number;
     if (req.headers.authorization) {
@@ -107,7 +106,7 @@ export default class PostResolver {
     const community = await communityLoader.load(post.communityId);
 
     const found = community.memberIds.find(
-      (commId: number) => commId === userId,
+      (commId: number) => commId === userId
     );
 
     if (found) {
@@ -118,10 +117,7 @@ export default class PostResolver {
   }
 
   @FieldResolver(() => Int, { nullable: true })
-  async hasVoted(
-    @Root() post: Post,
-    @Ctx() { req, upvoteLoader }: MyContext,
-  ) {
+  async hasVoted(@Root() post: Post, @Ctx() { req, upvoteLoader }: MyContext) {
     let userId;
     if (req.headers.authorization) {
       let user: any;
@@ -150,7 +146,7 @@ export default class PostResolver {
   async vote(
     @Ctx() { req }: MyContext,
     @Arg("postId", () => Int) postId: number,
-    @Arg("value", () => Int) value: number,
+    @Arg("value", () => Int) value: number
   ): Promise<UpvoteResponse> {
     // Check if the person has voted on the post
     let userId;
@@ -180,8 +176,8 @@ export default class PostResolver {
       where: { creatorId: userId, postId: postId },
     });
 
-    const post = await Post.findOne(postId);
-    const user = await User.findOne(userId);
+    const post = await Post.findOneBy({ id: postId });
+    const user = await User.findOneBy(userId);
 
     if (!user) {
       return {
@@ -262,10 +258,8 @@ export default class PostResolver {
   async posts(
     @Arg("limit", () => Int) limit: number,
     @Arg("cursor", () => String, { nullable: true })
-    cursor: string | null,
+    cursor: string | null
   ): Promise<PaginatedPosts> {
-    const connection = getConnection();
-
     const realLimit = Math.min(50, limit);
     const realLimitPlusOne = realLimit + 1;
 
@@ -275,7 +269,7 @@ export default class PostResolver {
       replacements.push(new Date(parseInt(cursor)));
     }
 
-    const posts = await connection.query(
+    const posts = await AppDataSource.query(
       `
     select p.* 
     from post p
@@ -283,7 +277,7 @@ export default class PostResolver {
     order by p."updatedAt" DESC
     limit $1
     `,
-      replacements,
+      replacements
     );
 
     return {
@@ -297,9 +291,8 @@ export default class PostResolver {
     @Ctx() { req }: MyContext,
     @Arg("limit", () => Int) limit: number,
     @Arg("cursor", () => String, { nullable: true })
-    cursor: string | null,
+    cursor: string | null
   ): Promise<PaginatedPosts> {
-    const connection = getConnection();
     let userId;
     if (req.headers.authorization) {
       const token = req.headers.authorization.split(`Bearer `)[1];
@@ -325,9 +318,6 @@ export default class PostResolver {
       userId = user.userId;
     }
 
-    const userRepository: Repository<User> = connection.getRepository(
-      User,
-    );
     const realLimit = Math.min(20, limit);
     const realLimitPlusOne = Math.min(20, limit) + 1;
     const replacements: any[] = [realLimitPlusOne];
@@ -350,9 +340,7 @@ export default class PostResolver {
         ],
       };
     }
-    const communityIds = user.memberCommunities.map(
-      (comm) => comm.id,
-    );
+    const communityIds = user.memberCommunities.map((comm) => comm.id);
 
     if (communityIds.length === 0) {
       return {
@@ -360,7 +348,7 @@ export default class PostResolver {
         hasMore: false,
       };
     }
-    const posts = await connection.query(
+    const posts = await AppDataSource.query(
       `
     select p.*
     from post p
@@ -370,7 +358,7 @@ export default class PostResolver {
     limit $1
 
     `,
-      replacements,
+      replacements
     );
     return {
       posts: posts.slice(0, realLimit),
@@ -383,9 +371,8 @@ export default class PostResolver {
     @Arg("communityId") communityId: number,
     @Arg("limit", () => Int) limit: number,
     @Arg("cursor", () => String, { nullable: true })
-    cursor: string | null,
+    cursor: string | null
   ): Promise<PaginatedPosts> {
-    const connection = getConnection();
     const realLimit = Math.min(20, limit);
     const realLimitPlusOne = Math.min(20, limit) + 1;
     const replacements: any[] = [realLimitPlusOne];
@@ -394,7 +381,7 @@ export default class PostResolver {
       replacements.push(new Date(parseInt(cursor)));
     }
 
-    const posts = await connection.query(
+    const posts = await AppDataSource.query(
       `
       select p.* 
       from post p
@@ -403,7 +390,7 @@ export default class PostResolver {
       order by p.points DESC
       limit $1
     `,
-      replacements,
+      replacements
     );
 
     return {
@@ -426,7 +413,7 @@ export default class PostResolver {
     @Arg("title") title: string,
     @Arg("content") content: string,
     @Arg("communityId", () => Int) communityId: number,
-    @Ctx() { req }: MyContext,
+    @Ctx() { req }: MyContext
   ): Promise<PostResponse> {
     let userId;
     if (req.headers.authorization) {
@@ -476,11 +463,6 @@ export default class PostResolver {
       };
     }
 
-    const connection = getConnection();
-    const userRepository: Repository<User> = connection.getRepository(
-      User,
-    );
-
     const user = await userRepository.findOne({
       where: { id: userId },
       relations: ["memberCommunities"],
@@ -498,7 +480,7 @@ export default class PostResolver {
     }
 
     const found = user.memberCommunities.find(
-      (comm) => comm.id === communityId,
+      (comm) => comm.id === communityId
     );
 
     if (!found) {
@@ -536,7 +518,7 @@ export default class PostResolver {
     @Arg("id") id: number,
     @Arg("title", () => String, { nullable: true }) title: string,
     @Arg("content", () => String, { nullable: true }) content: string,
-    @Ctx() { req }: MyContext,
+    @Ctx() { req }: MyContext
   ): Promise<PostResponse> {
     let userId;
     if (req.headers.authorization) {
@@ -560,7 +542,7 @@ export default class PostResolver {
         ],
       };
     }
-    const post = await Post.findOne(id);
+    const post = await Post.findOneBy({ id });
     if (!post) {
       return {
         errors: [
@@ -604,7 +586,7 @@ export default class PostResolver {
   @Mutation(() => Boolean)
   async deletePost(
     @Arg("id", () => Int) id: number,
-    @Ctx() { req }: MyContext,
+    @Ctx() { req }: MyContext
   ): Promise<Boolean> {
     let userId;
     if (req.headers.authorization) {
@@ -621,7 +603,7 @@ export default class PostResolver {
     if (!userId) {
       return false;
     }
-    const post = await Post.findOne(id);
+    const post = await Post.findOneBy({ id });
     if (!post) {
       console.log(`post not found`);
       return true;

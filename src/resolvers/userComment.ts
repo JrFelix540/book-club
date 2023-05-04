@@ -13,9 +13,13 @@ import {
   Root,
 } from "type-graphql";
 import { FieldError } from "./user";
-import { getConnection, Repository } from "typeorm";
 import jwt from "jsonwebtoken";
 import constants from "../constants";
+import { AppDataSource } from "../database/database";
+
+const commentRepository = AppDataSource.getRepository(UserComment);
+const userRepository = AppDataSource.getRepository(User);
+const upvoteRepository = AppDataSource.getRepository(CommentUpvote);
 
 @ObjectType()
 export class UserCommentResponse {
@@ -38,10 +42,7 @@ export class CommentUpvoteResponse {
 @Resolver(UserComment)
 export default class UserCommentResolver {
   @FieldResolver(() => Boolean)
-  async hasVoted(
-    @Root() userComment: UserComment,
-    @Ctx() { req }: MyContext,
-  ) {
+  async hasVoted(@Root() userComment: UserComment, @Ctx() { req }: MyContext) {
     let userId;
     if (req.headers.authorization) {
       const token = req.headers.authorization.split(`Bearer `)[1];
@@ -55,7 +56,7 @@ export default class UserCommentResolver {
       });
     }
 
-    const upvote = await CommentUpvote.findOne({
+    const upvote = await upvoteRepository.findOne({
       where: { commentId: userComment.id, creatorId: userId },
     });
 
@@ -69,7 +70,7 @@ export default class UserCommentResolver {
   @FieldResolver(() => Int, { nullable: true })
   async voteStatus(
     @Root() userComment: UserComment,
-    @Ctx() { req }: MyContext,
+    @Ctx() { req }: MyContext
   ) {
     let userId;
     if (req.headers.authorization) {
@@ -84,7 +85,7 @@ export default class UserCommentResolver {
       });
     }
 
-    const upvote = await CommentUpvote.findOne({
+    const upvote = await upvoteRepository.findOne({
       where: { commentId: userComment.id, creatorId: userId },
     });
 
@@ -95,10 +96,7 @@ export default class UserCommentResolver {
   }
 
   @FieldResolver(() => Boolean)
-  async isOwner(
-    @Root() userComment: UserComment,
-    @Ctx() { req }: MyContext,
-  ) {
+  async isOwner(@Root() userComment: UserComment, @Ctx() { req }: MyContext) {
     let userId;
     if (req.headers.authorization) {
       const token = req.headers.authorization.split(`Bearer `)[1];
@@ -111,11 +109,6 @@ export default class UserCommentResolver {
         return;
       });
     }
-    const connection = getConnection();
-    const commentRepository: Repository<UserComment> = connection.getRepository(
-      UserComment,
-    );
-
     const comment = await commentRepository.findOne({
       relations: ["creator"],
       where: { id: userComment.id },
@@ -132,7 +125,7 @@ export default class UserCommentResolver {
   async voteComment(
     @Arg("commentId") commentId: number,
     @Arg("value", () => Int) value: number,
-    @Ctx() { req }: MyContext,
+    @Ctx() { req }: MyContext
   ): Promise<CommentUpvoteResponse> {
     let userId;
     if (req.headers.authorization) {
@@ -157,8 +150,8 @@ export default class UserCommentResolver {
         ],
       };
     }
-    const user = await User.findOne({ id: userId });
-    const comment = await UserComment.findOne({ id: commentId });
+    const user = await userRepository.findOneBy({ id: userId });
+    const comment = await commentRepository.findOneBy({ id: commentId });
 
     if (!comment) {
       return {
@@ -192,7 +185,7 @@ export default class UserCommentResolver {
       };
     }
 
-    const upvote = await CommentUpvote.findOne({
+    const upvote = await upvoteRepository.findOne({
       where: { commentId: commentId, creatorId: userId },
     });
 
@@ -210,7 +203,7 @@ export default class UserCommentResolver {
         upvote.value = value;
 
         try {
-          await upvote.save();
+          await upvoteRepository.save(upvote);
         } catch (err) {
           console.log(err);
         }
@@ -218,7 +211,7 @@ export default class UserCommentResolver {
         comment.points = comment.points + value * 2;
 
         try {
-          await comment.save();
+          await commentRepository.save(comment);
         } catch (err) {
           console.log(err);
         }
@@ -238,7 +231,7 @@ export default class UserCommentResolver {
     newUpvote.value = value;
 
     try {
-      await newUpvote.save();
+      await upvoteRepository.save(newUpvote);
     } catch (err) {
       console.log(`Voting error`, err);
     }
@@ -246,7 +239,7 @@ export default class UserCommentResolver {
     comment.points = comment.points + value;
 
     try {
-      await comment.save();
+      await commentRepository.save(comment);
     } catch (err) {
       console.log(err);
     }
@@ -260,7 +253,7 @@ export default class UserCommentResolver {
   async createComment(
     @Arg("content") content: string,
     @Arg("postId") postId: number,
-    @Ctx() { req }: MyContext,
+    @Ctx() { req }: MyContext
   ): Promise<UserCommentResponse> {
     let userId;
     if (req.headers.authorization) {
@@ -329,25 +322,22 @@ export default class UserCommentResolver {
 
   @Query(() => [UserComment], { nullable: true })
   async postComments(
-    @Arg("postId") postId: number,
+    @Arg("postId") postId: number
   ): Promise<UserComment[] | null> {
-    const post = await Post.findOne({ id: postId });
-    const connection = getConnection();
-    const commentRepository: Repository<UserComment> = connection.getRepository(
-      UserComment,
-    );
+    const post = await Post.findOneBy({ id: postId });
+    if (!post) {
+      return null;
+    }
     const comments = await commentRepository.find({
       relations: ["post", "creator"],
-      where: { post },
+      where: { post: { id: post.id } },
     });
 
     return comments;
   }
 
   @Mutation(() => Boolean)
-  async deleteAllComments(
-    @Ctx() { req }: MyContext,
-  ): Promise<Boolean> {
+  async deleteAllComments(@Ctx() { req }: MyContext): Promise<Boolean> {
     let userId;
     if (req.headers.authorization) {
       const token = req.headers.authorization.split(`Bearer `)[1];
@@ -370,7 +360,7 @@ export default class UserCommentResolver {
   @Mutation(() => Boolean)
   async deleteComment(
     @Arg("commentId") commentId: number,
-    @Ctx() { req }: MyContext,
+    @Ctx() { req }: MyContext
   ) {
     let userId;
     if (req.headers.authorization) {
@@ -387,8 +377,6 @@ export default class UserCommentResolver {
     if (!userId) {
       return false;
     }
-    const connection = getConnection();
-    const commentRepository = connection.getRepository(UserComment);
     const comment = await commentRepository.findOne({
       where: { id: commentId },
       relations: ["creator"],

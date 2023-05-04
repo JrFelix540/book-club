@@ -6,22 +6,18 @@ A community/discussion-first approach to discussing books, inspired by [Reddit](
 
 ## Getting started
 
-Clone the repository:
+First make sure that the `.env.development` file in the `env` folder is defined with the appropriate environmental variables.
+Then you can just start up the API service by running
 
-`git clone https://github.com/JrFelix540/book-club-server.git`
+`docker compose up`
 
-Enter the project directory
+Afterwards, navigate to `http://localhost:${PORT}/graphql/graphql` to access the GraphQL Playground.
 
-`cd book-club-server`
+## Environment Variables
 
-Install NPM dependencies:
+These are the environmental variables that the api will need in order to properly function.
 
-`npm i`
-
-Set environment variables
-
-- `NEXT_PUBLIC_API_URI` - GraphQL API address
-
-Run the development server:
-
-`npm run dev`
+- DATABASE_URL
+- PORT=placeholder
+- MODE=placeholder
+- JWT_SECRET=placeholder

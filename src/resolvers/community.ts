@@ -12,10 +12,12 @@ import {
   Root,
 } from "type-graphql";
 import { FieldError } from "./user";
-import { getConnection, Repository } from "typeorm";
 import { User, Community } from "../entities";
 import jwt from "jsonwebtoken";
 import constants from "../constants";
+import { AppDataSource } from "../database/database";
+
+const communityRepository = AppDataSource.getRepository(Community);
 
 const allRelations: string[] = ["posts", "favoriteBooks"];
 
@@ -40,18 +42,12 @@ export class BooleanFieldResponse {
 export default class CommunityResolver {
   // Dataclasses
   @FieldResolver(() => User)
-  creator(
-    @Root() community: Community,
-    @Ctx() { userLoader }: MyContext,
-  ) {
+  creator(@Root() community: Community, @Ctx() { userLoader }: MyContext) {
     return userLoader.load(community.creatorId);
   }
 
   @FieldResolver(() => [User])
-  members(
-    @Root() community: Community,
-    @Ctx() { userLoader }: MyContext,
-  ) {
+  members(@Root() community: Community, @Ctx() { userLoader }: MyContext) {
     return userLoader.loadMany(community.memberIds);
   }
 
@@ -70,9 +66,7 @@ export default class CommunityResolver {
       });
     }
 
-    const found = community.memberIds.find(
-      (commId) => commId === userId,
-    );
+    const found = community.memberIds.find((commId) => commId === userId);
 
     if (found) {
       return true;
@@ -94,10 +88,6 @@ export default class CommunityResolver {
 
   @Query(() => [Community])
   async allCommunities() {
-    const connection = getConnection();
-    const communityRepository: Repository<Community> = connection.getRepository(
-      Community,
-    );
     const communities = await communityRepository.find({
       relations: allRelations,
     });
@@ -106,10 +96,6 @@ export default class CommunityResolver {
 
   @Query(() => Community)
   async community(@Arg("id") id: number) {
-    const connection = getConnection();
-    const communityRepository: Repository<Community> = connection.getRepository(
-      Community,
-    );
     const community = await communityRepository.findOne({
       where: { id },
       relations: ["creator"],
@@ -121,7 +107,7 @@ export default class CommunityResolver {
   async createCommunity(
     @Ctx() { req }: MyContext,
     @Arg("name") name: string,
-    @Arg("description") description: string,
+    @Arg("description") description: string
   ): Promise<CommunityResponse> {
     let userId;
     if (req.headers.authorization) {
@@ -149,7 +135,6 @@ export default class CommunityResolver {
       where: { id: userId },
     });
 
-    const connection = getConnection();
     if (!user) {
       return {
         errors: [
@@ -170,7 +155,7 @@ export default class CommunityResolver {
     community.memberIds = [user.id];
 
     try {
-      await connection.manager.save(community);
+      await communityRepository.save(community);
     } catch (err) {
       if (err.detail.includes("already exists")) {
         return {
@@ -194,7 +179,7 @@ export default class CommunityResolver {
   @Mutation(() => BooleanFieldResponse)
   async joinCommunity(
     @Ctx() { req }: MyContext,
-    @Arg("id", () => Int) id: number,
+    @Arg("id", () => Int) id: number
   ): Promise<BooleanFieldResponse> {
     let userId;
     if (req.headers.authorization) {
@@ -231,10 +216,11 @@ export default class CommunityResolver {
         ],
       };
     }
-    const community = await Community.findOne(
-      { id },
-      { relations: ["members"] },
-    );
+    const community = await communityRepository.findOne({
+      where: { id },
+      relations: ["members"],
+    });
+
     if (!community) {
       return {
         errors: [
@@ -287,7 +273,7 @@ export default class CommunityResolver {
   @Mutation(() => BooleanFieldResponse)
   async leaveCommunity(
     @Ctx() { req }: MyContext,
-    @Arg("communityId") communityId: number,
+    @Arg("communityId") communityId: number
   ): Promise<BooleanFieldResponse> {
     let userId;
     if (req.headers.authorization) {
@@ -312,12 +298,8 @@ export default class CommunityResolver {
         ],
       };
     }
-    const connection = getConnection();
-    const communityRepository: Repository<Community> = connection.getRepository(
-      Community,
-    );
 
-    const user = await User.findOne({ id: userId });
+    const user = await User.findOneBy(userId);
     if (!user) {
       return {
         errors: [
@@ -345,11 +327,9 @@ export default class CommunityResolver {
     }
 
     const newMembers = community.members.filter(
-      (member) => member.id !== user.id,
+      (member) => member.id !== user.id
     );
-    const newMemberIds = community.memberIds.filter(
-      (id) => id !== user.id,
-    );
+    const newMemberIds = community.memberIds.filter((id) => id !== user.id);
     community.members = newMembers;
     community.memberIds = newMemberIds;
 
