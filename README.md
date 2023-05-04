@@ -16,6 +16,6 @@ Afterwards, navigate to `http://localhost:${PORT}/graphql/` to access the GraphQ
 These are the environmental variables that the api will need in order to properly function.
 
 - DATABASE_URL
-- PORT=placeholder
-- MODE=placeholder
-- JWT_SECRET=placeholder
+- PORT
+- MODE
+- JWT_SECRET
