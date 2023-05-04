@@ -7,11 +7,9 @@ A community/discussion-first approach to discussing books, inspired by [Reddit](
 ## Getting started
 
 First make sure that the `.env.development` file in the `env` folder is defined with the appropriate environmental variables.
-Then you can just start up the API service by running
+Then you can just start up the API service by running `docker compose up`.
 
-`docker compose up`
-
-Afterwards, navigate to `http://localhost:${PORT}/graphql/graphql` to access the GraphQL Playground.
+Afterwards, navigate to `http://localhost:${PORT}/graphql/` to access the GraphQL Playground.
 
 ## Environment Variables
 
